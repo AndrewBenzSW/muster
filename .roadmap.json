@@ -1,0 +1,67 @@
+{
+  "items": [
+    {
+      "slug": "project-bootstrap",
+      "title": "Phase 0: Project bootstrap",
+      "priority": "high",
+      "status": "planned",
+      "context": "Go module, Cobra root command, TTY detection, go:embed for prompts and Docker assets, Makefile, GoReleaser, GitHub Actions CI on all three platforms (Linux, macOS, Windows). Scaffold test helpers and testdata/ fixtures. Deliverable: muster version works, builds and passes tests on all three platforms."
+    },
+    {
+      "slug": "prompt-staging",
+      "title": "Phase 1: muster code and prompt staging",
+      "priority": "high",
+      "status": "planned",
+      "context": "internal/prompt/ (embed, template resolution, stage to temp dir), internal/config/ (parse user config for model tiers and defaults). cmd/code.go stages skills and invokes claude --plugin-dir or opencode. Stub --yolo with error pointing to Phase 2. Table-driven tests for config step resolution and golden file tests for template rendering. Deliverable: muster code launches Claude with all workflow skills available."
+    },
+    {
+      "slug": "docker-orchestration",
+      "title": "Phase 2: Docker container orchestration",
+      "priority": "high",
+      "status": "planned",
+      "context": "internal/docker/ with auth detection (Bedrock, Max, OpenRouter, local provider), compose generation from embedded base + overrides with container labeling, worktree volume mounts, container lifecycle (start/stop/exec/list). Parse project config (.muster/config.yml + dev-agent config with local overrides). cmd/down.go for teardown by slug, --all, --orphans. Deliverable: muster code --yolo boots a labeled container, muster down manages teardown."
+    },
+    {
+      "slug": "roadmap-management",
+      "title": "Phase 3: Roadmap management commands",
+      "priority": "medium",
+      "status": "planned",
+      "context": "internal/roadmap/ to load/save .muster/roadmap.json (both array and wrapper formats, backward compat for .roadmap.json) with pr_url and branch fields. cmd/status.go (table + detail + JSON), cmd/add.go (AI-assisted with fast model), cmd/sync.go (AI-assisted fuzzy matching), internal/ui/picker.go (interactive item selector reused by in, out, plan). Deliverable: full roadmap CRUD without needing the pipeline."
+    },
+    {
+      "slug": "post-pr-lifecycle",
+      "title": "Phase 4: muster out and git operations",
+      "priority": "medium",
+      "status": "planned",
+      "context": "internal/git/ (worktree CRUD, squash merge, conflict detection, version tagging), internal/git/pr.go (PR/MR creation via gh/glab, CI status polling, merge confirmation), internal/version/ (CHANGELOG parsing, semver bump). cmd/out.go handles post-PR lifecycle: monitor CI, push fixes, wait for merge, pull latest, clean up. Only meaningful for github-pr or gitlab-mr merge strategies. Git operation tests against real temp repos. Deliverable: muster out handles full post-PR lifecycle."
+    },
+    {
+      "slug": "standalone-planning",
+      "title": "Phase 5: Standalone planning command",
+      "priority": "medium",
+      "status": "planned",
+      "context": "cmd/plan.go resolves slug (args or picker), stages plan-feature templates, invokes Claude, verifies plan output exists at .muster/work/{slug}/plan/implementation-plan.md. Handles pre-planning where no worktree exists yet. Deliverable: muster plan [slug] runs research/synthesis/planning and produces implementation plan."
+    },
+    {
+      "slug": "full-pipeline",
+      "title": "Phase 6: Full muster in pipeline",
+      "priority": "medium",
+      "status": "planned",
+      "context": "internal/pipeline/ with state machine, checkpoint read/write, filesystem locks with stale PID detection, timing, summary generation. Pipeline steps: worktree, setup, plan, execute, verify (up to 3 fix attempts), review, post-review-verify, prepare (merge main, version bump, changelog, roadmap cleanup), finish (direct merge or PR/MR with pr_url). Supports --all (parallel batch with claim locks), --next, --step, --resume, --retry. Full replacement of roadmap-implement.sh and roadmap-loop.sh."
+    },
+    {
+      "slug": "tooling-commands",
+      "title": "Phase 7: init, doctor, help, and update commands",
+      "priority": "medium",
+      "status": "planned",
+      "context": "cmd/init.go generates .muster/ structure with --migrate for legacy files. cmd/doctor.go with tiered health checks (hard: git + claude/opencode, soft: docker, gh, glab), --fix, --config (resolved step config with source annotations), --models (provider/model validation). cmd/help.go with embedded reference docs and pipeline diagnostics. cmd/update.go with self-update via go-selfupdate. Deliverable: full CLI surface complete."
+    },
+    {
+      "slug": "polish-release",
+      "title": "Phase 8: Polish and first release",
+      "priority": "lower",
+      "status": "planned",
+      "context": "Shell completion (bash, zsh, fish, powershell), install.sh for Mac/Linux, install.ps1 for Windows, README with usage examples, first tagged release v0.1.0, parity testing against existing shell scripts, manual verification on Windows with Docker Desktop and Git for Windows."
+    }
+  ]
+}
