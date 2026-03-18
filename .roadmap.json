@@ -4,7 +4,7 @@
       "slug": "roadmap-management",
       "title": "Phase 3: Roadmap management commands",
       "priority": "medium",
-      "status": "planned",
+      "status": "in_progress",
       "context": "internal/roadmap/ to load/save .muster/roadmap.json (both array and wrapper formats, backward compat for .roadmap.json) with pr_url and branch fields. cmd/status.go (table + detail + JSON), cmd/add.go (AI-assisted with fast model), cmd/sync.go (AI-assisted fuzzy matching), internal/ui/picker.go (interactive item selector reused by in, out, plan). Deliverable: full roadmap CRUD without needing the pipeline."
     },
     {
