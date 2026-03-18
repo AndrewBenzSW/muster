@@ -137,3 +137,17 @@ Phase 2 (docker-orchestration) is complete, implementing full Docker container o
 - **Cross-platform testing** on Linux, macOS, and Windows
 
 See [docs/design.md](docs/design.md) for the full design document and [CHANGELOG.md](CHANGELOG.md) for detailed phase progression.
+
+## Future Roadmap
+
+### High Priority
+- **Mock Agent Tool** - Mock AI agent coding tool for verifying agent behavior in tests
+
+### Medium Priority
+- **Phase 4: muster out and git operations** - Post-PR lifecycle management and git operations
+- **Phase 5: Standalone planning command** - Standalone planning command for research and synthesis
+- **Phase 6: Full muster in pipeline** - Complete muster in pipeline with state machine and checkpoints
+- **Phase 7: init, doctor, help, and update commands** - Tooling commands for setup, health checks, and updates
+
+### Lower Priority
+- **Phase 8: Polish and first release** - Shell completion, installers, and release preparation
