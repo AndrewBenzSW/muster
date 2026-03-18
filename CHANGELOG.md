@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Mock Agent Tool**: A reusable `internal/testutil/mockagent` binary that implements the AI tool interface (`--print`, `--plugin-dir` flags), configurable via `--exit-code`, `--output`, and `--sleep` flags for test scenario control
+- **`testutil.BuildMockAgent(t)`**: Test helper that compiles and returns the mock agent binary path, enabling any test package to verify AI invocation behavior without calling real AI services
+
+### Changed
+
+- Consolidated three separate inline mock tool implementations (in `internal/ai/invoke_test.go`, `cmd/add_test.go`, `cmd/sync_test.go`) into a single shared `BuildMockAgent` helper, eliminating duplicated Go-source-as-string compilation patterns
+
 ## [0.3.0] - 2026-03-18
 
 ### Added
