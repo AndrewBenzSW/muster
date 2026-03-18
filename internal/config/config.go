@@ -40,6 +40,18 @@ const (
 	DefaultModel    = "claude-sonnet-4.5"
 )
 
+// ToolExecutable returns the actual executable name for a tool config name.
+// Tool config names (e.g., "claude-code") may differ from their CLI binary
+// names (e.g., "claude").
+func ToolExecutable(tool string) string {
+	switch tool {
+	case "claude-code":
+		return "claude"
+	default:
+		return tool
+	}
+}
+
 // DefaultsConfig specifies default tool, provider, and model settings
 type DefaultsConfig struct {
 	Tool     *string `yaml:"tool"`

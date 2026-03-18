@@ -87,11 +87,7 @@ func TestCodeCommand_WithHelpFlag_Succeeds(t *testing.T) {
 	assert.Contains(t, output, "--yolo", "help should contain --yolo flag")
 }
 
-func TestCodeCommand_WithYoloFlag_RequiresDocker(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
-
+func TestCodeCommand_WithYoloFlag_ReturnsNotImplemented(t *testing.T) {
 	// Create a fresh command instance to avoid state pollution
 	cmd := &cobra.Command{
 		Use:  "code",
@@ -104,26 +100,14 @@ func TestCodeCommand_WithYoloFlag_RequiresDocker(t *testing.T) {
 	err := cmd.Flags().Set("yolo", "true")
 	require.NoError(t, err, "setting yolo flag should not error")
 
-	// Execute the command - should fail if Docker not running or config missing
+	// Execute the command - should return "not yet implemented"
 	err = cmd.RunE(cmd, []string{})
-	require.Error(t, err, "command should return error with --yolo flag without proper config")
-
-	// Verify error is actionable (mentions Docker or config)
-	errMsg := err.Error()
-	hasDockerError := strings.Contains(strings.ToLower(errMsg), "docker") ||
-		strings.Contains(strings.ToLower(errMsg), "daemon")
-	hasConfigError := strings.Contains(strings.ToLower(errMsg), "config")
-
-	assert.True(t, hasDockerError || hasConfigError,
-		"error should mention Docker daemon or config: %s", errMsg)
+	require.Error(t, err, "command should return error with --yolo flag")
+	assert.Contains(t, err.Error(), "not yet implemented", "error should indicate feature is not yet implemented")
 }
 
-func TestCodeCommand_YoloWithoutConfig_ReturnsActionableError(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
-
-	// Test that --yolo without config returns actionable error
+func TestCodeCommand_YoloErrorMessage_Format(t *testing.T) {
+	// Test that --yolo error message is clear about the feature status
 	cmd := &cobra.Command{
 		Use:  "code",
 		RunE: codeCmd.RunE,
@@ -132,20 +116,10 @@ func TestCodeCommand_YoloWithoutConfig_ReturnsActionableError(t *testing.T) {
 	cmd.Flags().Bool("verbose", false, "")
 	_ = cmd.Flags().Set("yolo", "true")
 
-	// Create temp dir without config
-	tmpDir := t.TempDir()
-	oldDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { _ = os.Chdir(oldDir) }()
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
-
-	err = cmd.RunE(cmd, []string{})
-	require.Error(t, err, "command should error without config")
-
-	// Error should be actionable
-	errMsg := err.Error()
-	assert.NotEmpty(t, errMsg, "error message should not be empty")
+	err := cmd.RunE(cmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--yolo")
+	assert.Contains(t, err.Error(), "not yet implemented")
 }
 
 func TestCodeCommand_FlagParsing_ToolOverride(t *testing.T) {

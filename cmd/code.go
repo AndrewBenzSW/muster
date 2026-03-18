@@ -35,7 +35,7 @@ using Claude Agent SDK skills.`,
 			return err
 		}
 		if yolo {
-			return runDockerFlow(cmd, args)
+			return fmt.Errorf("--yolo (sandboxed container mode) is not yet implemented")
 		}
 
 		// Task 4.3: Implement config loading
@@ -129,18 +129,19 @@ using Claude Agent SDK skills.`,
 		}
 
 		// Execute the tool
-		execCmd := exec.Command(resolved.Tool, cmdArgs...) //nolint:gosec // G204: Tool path validated through config system
+		execCmd := exec.Command(config.ToolExecutable(resolved.Tool), cmdArgs...) //nolint:gosec // G204: Tool path validated through config system
 		execCmd.Stdin = os.Stdin
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
 
 		if err := execCmd.Run(); err != nil {
 			// Task 4.7: Add error handling with categories
+			executable := config.ToolExecutable(resolved.Tool)
 			var execErr *exec.Error
 			if errors.As(err, &execErr) && execErr.Err == exec.ErrNotFound {
-				return fmt.Errorf("tool %q not found: %w\n\nPlease install %s and ensure it is in your PATH.\nFor Claude Code: https://docs.anthropic.com/claude-code\nFor OpenCode: https://github.com/opencodeinterpreter/opencode", resolved.Tool, err, resolved.Tool)
+				return fmt.Errorf("tool %q not found: %w\n\nPlease install %s and ensure it is in your PATH.\nFor Claude Code: https://docs.anthropic.com/claude-code\nFor OpenCode: https://github.com/opencodeinterpreter/opencode", executable, err, executable)
 			}
-			return fmt.Errorf("failed to execute %s: %w", resolved.Tool, err)
+			return fmt.Errorf("failed to execute %s: %w", executable, err)
 		}
 
 		return nil
@@ -312,7 +313,7 @@ func runDockerFlow(cmd *cobra.Command, args []string) error {
 
 	// Execute the tool in the dev-agent service
 	// Pass through stdin/stdout/stderr for interactive session
-	execErr := client.ComposeExec(ctx, composePath, projectName, "dev-agent", []string{resolved.Tool})
+	execErr := client.ComposeExec(ctx, composePath, projectName, "dev-agent", []string{config.ToolExecutable(resolved.Tool)})
 
 	// Note: We don't automatically stop containers on exit to allow inspection
 	// Users can manually stop with 'muster down' or 'docker compose down'
@@ -328,7 +329,7 @@ func init() {
 	rootCmd.AddCommand(codeCmd)
 
 	// Define persistent flags
-	codeCmd.PersistentFlags().String("tool", "", "Override the tool to use (e.g., claude-code, opencode)")
+	codeCmd.PersistentFlags().String("tool", "", "Override the tool to use (e.g., claude, opencode)")
 	codeCmd.PersistentFlags().Bool("no-plugin", false, "Run the tool without the staged skills plugin")
 	codeCmd.PersistentFlags().Bool("keep-staged", false, "Keep staged skills directory after command exits")
 

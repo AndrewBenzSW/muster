@@ -533,6 +533,24 @@ func TestValidateDefaultToolAndProvider(t *testing.T) {
 	assert.Empty(t, errs)
 }
 
+func TestToolExecutable(t *testing.T) {
+	tests := []struct {
+		tool     string
+		expected string
+	}{
+		{"claude-code", "claude"},
+		{"opencode", "opencode"},
+		{"some-other-tool", "some-other-tool"},
+		{"claude", "claude"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.tool, func(t *testing.T) {
+			assert.Equal(t, tt.expected, ToolExecutable(tt.tool))
+		})
+	}
+}
+
 // Helper functions for tests
 func intPtr(i int) *int {
 	return &i
