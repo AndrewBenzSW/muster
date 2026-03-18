@@ -4,7 +4,7 @@
       "slug": "docker-orchestration",
       "title": "Phase 2: Docker container orchestration",
       "priority": "high",
-      "status": "planned",
+      "status": "in_progress",
       "context": "internal/docker/ with auth detection (Bedrock, Max, OpenRouter, local provider), compose generation from embedded base + overrides with container labeling, worktree volume mounts, container lifecycle (start/stop/exec/list). Parse project config (.muster/config.yml + dev-agent config with local overrides). cmd/down.go for teardown by slug, --all, --orphans. Deliverable: muster code --yolo boots a labeled container, muster down manages teardown."
     },
     {
