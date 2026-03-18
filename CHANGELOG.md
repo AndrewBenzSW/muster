@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`muster status` Command**: Display all roadmap items in a table (SLUG/TITLE/PRIORITY/STATUS columns) or detailed view for a specific slug, with `--format json` for pipe-friendly JSON output and a friendly empty-state message
+- **`muster add` Command**: Create roadmap items in batch mode via flags (`--title`, `--priority`, `--context`) or interactively with AI-assisted slug generation, priority suggestion, and context expansion using the fast model tier
+- **`muster sync` Command**: Unidirectional sync from source to target roadmap file with exact slug matching, AI-assisted fuzzy matching (confidence threshold-based), `--dry-run` preview, `--delete` for removing unmatched target items, and `--yes` for automation
+- **Roadmap Persistence**: `internal/roadmap/` package for loading and saving `.muster/roadmap.json` with backward-compatible fallback to `.roadmap.json`, automatic format detection (wrapper vs array JSON), parse-error isolation (no fallback on malformed primary), and post-load validation of required fields, unique slugs, and enum values
+- **Interactive Picker**: Fuzzy-filterable item selector using `charmbracelet/huh` behind a testable `Picker` interface, reusable by future commands (`in`, `out`, `plan`)
+- **Non-Interactive AI Invocation**: `internal/ai/invoke.go` helper for programmatic AI tool invocation with prompt staging and structured JSON response capture, distinct from the interactive `muster code` pattern
+- **Slug Generation**: `GenerateSlug()` utility for converting titles to URL-safe kebab-case identifiers (max 40 chars, unicode-safe)
+
 - **Docker Container Orchestration**: `muster code --yolo` boots a sandboxed Docker container with AI coding tools, network proxy isolation, and all required provider authentication pre-configured
 - **Multi-Provider Auth Detection**: Automatic detection and injection of credentials for Bedrock (AWS SSO with credential pre-resolution), Max (credential file mounting), Anthropic/OpenRouter (API key passthrough), and local inference servers (localhost URL rewriting to `host.docker.internal`)
 - **Dynamic Compose Generation**: Programmatic Docker Compose file generation from embedded base template with runtime overrides for auth, workspace mounts, proxy domains, and container labels — written atomically with validation via `docker compose config`
