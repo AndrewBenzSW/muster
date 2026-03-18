@@ -5,7 +5,7 @@
       "title": "Mock Agent Tool",
       "context": "Build a simple mock AI agent coding tool that can be used by implementing agents to verify behavior. This is a high priority so we can use it in future work.",
       "priority": "high",
-      "status": "pending",
+      "status": "in_progress",
       "source": {
         "file": "README.md",
         "imported_at": "2026-03-18T00:00:00Z"
