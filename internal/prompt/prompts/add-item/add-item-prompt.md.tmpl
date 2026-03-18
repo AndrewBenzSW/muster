@@ -1,0 +1,36 @@
+# Add Roadmap Item
+
+You are assisting with adding a new roadmap item. Generate a JSON object representing the roadmap item based on the user's input.
+
+## User Input
+
+{{.Extra.UserInput}}
+
+## Instructions
+
+1. **Derive the slug**: Convert the title to kebab-case (lowercase, hyphens instead of spaces/underscores, only alphanumeric and hyphens). Maximum 40 characters. Strip all non-[a-z0-9-] characters.
+
+2. **Suggest priority**: Analyze the context to determine priority. Options: `high`, `medium`, `low`, `lower`. Default to `medium` if unclear.
+
+3. **Expand context**: Take the user's input and expand it into a clear, detailed context that explains what this roadmap item is about. Include relevant technical details, motivation, and scope.
+
+4. **Set status**: Always use `planned` for new items.
+
+## Output Format
+
+Output ONLY a JSON object with this exact schema. Do NOT use markdown code fences. Do NOT add any explanatory text before or after the JSON.
+
+```
+{"slug": "...", "title": "...", "priority": "high|medium|low|lower", "status": "planned", "context": "..."}
+```
+
+## Model Configuration
+
+Use the fast tier model: {{.Models.Fast}}
+
+## Example
+
+User input: "Add API rate limiting for external services"
+
+Expected output:
+{"slug": "api-rate-limiting-external-services", "title": "Add API rate limiting for external services", "priority": "high", "status": "planned", "context": "Implement rate limiting for all external API calls to prevent service disruption from excessive requests. This includes configuring per-service limits, implementing exponential backoff, and adding monitoring for rate limit violations. Priority is high due to recent production incidents with third-party API throttling."}

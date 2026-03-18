@@ -146,6 +146,12 @@ func StageSkills(ctx *PromptContext) (tmpDir string, cleanup func(), err error) 
 			return nil
 		}
 
+		// Skip non-skill prompts (add-item, sync-match, test)
+		// These templates are used separately via ai.InvokeAI() with specific Extra data
+		if strings.Contains(path, "add-item/") || strings.Contains(path, "sync-match/") || strings.Contains(path, "test/") {
+			return nil
+		}
+
 		// Render the template
 		rendered, err := RenderTemplate(path, ctx)
 		if err != nil {
@@ -165,7 +171,7 @@ func StageSkills(ctx *PromptContext) (tmpDir string, cleanup func(), err error) 
 
 		// Transform directory name: plan-feature -> roadmap-plan-feature
 		dir = strings.TrimSuffix(dir, string(filepath.Separator))
-		if dir != "" && dir != "test" {
+		if dir != "" {
 			dir = "roadmap-" + dir
 		}
 
@@ -174,13 +180,9 @@ func StageSkills(ctx *PromptContext) (tmpDir string, cleanup func(), err error) 
 
 		// Construct full output path
 		var outPath string
-		if dir != "" && dir != "test" {
+		if dir != "" {
 			outPath = filepath.Join(skillsDir, dir, file)
 		} else {
-			// Skip test files
-			if dir == "test" {
-				return nil
-			}
 			outPath = filepath.Join(skillsDir, file)
 		}
 

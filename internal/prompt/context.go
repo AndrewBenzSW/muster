@@ -52,6 +52,11 @@ type PromptContext struct {
 		// Deep is the model name for the deep/capable tier
 		Deep string
 	}
+
+	// Extra allows passing additional data to templates without modifying the shared struct.
+	// Templates access via {{.Extra.Key}}. For example, sync templates use this to pass
+	// SourceItems and TargetItems.
+	Extra map[string]interface{} `json:"-"`
 }
 
 // NewPromptContext creates a new PromptContext from resolved configuration and paths.
@@ -76,6 +81,7 @@ func NewPromptContext(
 		WorktreePath: worktreePath,
 		MainRepoPath: mainRepoPath,
 		PlanDir:      planDir,
+		Extra:        make(map[string]interface{}),
 	}
 
 	// Populate Models from the resolved tool's tier mappings
