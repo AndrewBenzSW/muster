@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-18
+
 ### Added
 
 - **`muster status` Command**: Display all roadmap items in a table (SLUG/TITLE/PRIORITY/STATUS columns) or detailed view for a specific slug, with `--format json` for pipe-friendly JSON output and a friendly empty-state message

@@ -53,7 +53,7 @@ func LoadProjectConfig(dir string) (*ProjectConfig, error) {
 
 // loadProjectConfigFile loads a single project config file
 func loadProjectConfigFile(path string) (*ProjectConfig, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: Path from config system, not user input
 	if err != nil {
 		return nil, err
 	}

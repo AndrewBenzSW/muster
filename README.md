@@ -50,6 +50,9 @@ muster uses a two-layer config system:
 ## Prerequisites
 
 - Go 1.23 or later
+- Docker Desktop (for `muster code --yolo` and `muster down` commands)
+  - Linux/macOS: Docker Engine with Docker Compose v2+ plugin
+  - Windows: Docker Desktop with WSL2 backend and file sharing enabled for project directories
 
 ## Building
 
@@ -78,11 +81,32 @@ Currently implemented commands:
 # Launch an interactive coding agent with workflow skills
 ./dist/muster code
 
-# Show help for the code command
+# Launch in a sandboxed Docker container with isolated environment
+./dist/muster code --yolo
+
+# Stop and remove Docker containers
+./dist/muster down              # Stop all containers for current project
+./dist/muster down my-feature   # Stop containers for specific slug
+./dist/muster down --orphans    # Stop orphaned containers (not in_progress)
+./dist/muster down --all        # Explicitly stop all containers
+
+# Show help for any command
 ./dist/muster code --help
+./dist/muster down --help
 ```
 
 The `muster code` command launches Claude Code with a set of skills that understand the muster workflow. It uses the resolved configuration from your user and project configs to select the appropriate tool, provider, and model.
+
+With the `--yolo` flag, it runs the agent in a Docker container with full orchestration:
+- Authentication collection (AWS Bedrock, Claude Max, API keys, local providers)
+- Workspace detection (worktree vs main repo)
+- Docker Compose generation with proper volume mounts
+- Container lifecycle management
+
+The `muster down` command manages Docker containers created by muster:
+- Without arguments: stops all containers for the current project
+- With `--orphans`: stops containers whose slugs are no longer `in_progress` in the roadmap
+- Respects the 1-hour grace period for new containers
 
 Other commands listed above (`muster in`, `muster out`, `muster plan`, etc.) are deferred to future phases.
 
@@ -98,11 +122,18 @@ Run `make help` to see all available targets:
 
 ## Status
 
-Phase 1 (prompt-staging) is complete, implementing the foundation for prompt template rendering and configuration resolution. This includes:
+Phase 2 (docker-orchestration) is complete, implementing full Docker container orchestration:
 
-- Configuration system with 5-step resolution chain
-- Prompt template loading and rendering with template variables
-- `muster code` command that launches interactive coding agents
-- Model tier support for multi-tier tool configurations
+- **Configuration system** with 5-step resolution chain
+- **Prompt template** loading and rendering with template variables
+- **`muster code`** command that launches interactive coding agents
+- **`muster code --yolo`** for sandboxed Docker container execution with:
+  - Authentication collection (Bedrock, Max, API keys, local providers)
+  - Workspace detection and mounting (worktree + main repo)
+  - Docker Compose generation with auth/volume/network configuration
+  - Container lifecycle management
+- **`muster down`** command for container cleanup with orphan detection
+- **Model tier support** for multi-tier tool configurations
+- **Cross-platform testing** on Linux, macOS, and Windows
 
 See [docs/design.md](docs/design.md) for the full design document and [CHANGELOG.md](CHANGELOG.md) for detailed phase progression.

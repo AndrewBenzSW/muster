@@ -35,7 +35,7 @@ var (
 
 // IsInteractive returns true if stdout is connected to a terminal
 func IsInteractive() bool {
-	return term.IsTerminal(int(os.Stdout.Fd()))
+	return term.IsTerminal(int(os.Stdout.Fd())) //nolint:gosec // G115: Safe conversion for terminal detection
 }
 
 // SetOutputMode sets the current output mode

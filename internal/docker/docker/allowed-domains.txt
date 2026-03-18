@@ -1,0 +1,20 @@
+# Base domain allowlist for muster proxy
+# Additional domains added at runtime based on provider and user config
+
+# Essential infrastructure
+github.com
+.github.com
+.githubusercontent.com
+
+# Package managers
+.npmjs.org
+.npmjs.com
+.yarnpkg.com
+pypi.org
+.pypi.org
+rubygems.org
+.rubygems.org
+
+# CDNs and registries
+.cloudflare.com
+.fastly.net

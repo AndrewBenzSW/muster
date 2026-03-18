@@ -17,8 +17,8 @@ func TestResolveStep(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:     "all defaults - hard-coded",
-			stepName: "code",
+			name:       "all defaults - hard-coded",
+			stepName:   "code",
 			projectCfg: &ProjectConfig{},
 			userCfg:    &UserConfig{},
 			expected: &ResolvedConfig{
@@ -29,8 +29,8 @@ func TestResolveStep(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:     "user defaults only",
-			stepName: "code",
+			name:       "user defaults only",
+			stepName:   "code",
 			projectCfg: &ProjectConfig{},
 			userCfg: &UserConfig{
 				Defaults: &DefaultsConfig{
@@ -137,7 +137,7 @@ func TestResolveStep(t *testing.T) {
 						}{
 							Fast:     strPtr("claude-sonnet-4.5"),
 							Standard: strPtr("claude-sonnet-4.5"),
-							Deep:  strPtr("claude-opus-4"),
+							Deep:     strPtr("claude-opus-4"),
 						},
 					},
 				},
@@ -154,8 +154,8 @@ func TestResolveStep(t *testing.T) {
 			stepName: "code",
 			projectCfg: &ProjectConfig{
 				Defaults: &DefaultsConfig{
-					Tool:     strPtr("claude-code"),
-					Model:    strPtr("muster-standard"),
+					Tool:  strPtr("claude-code"),
+					Model: strPtr("muster-standard"),
 				},
 			},
 			userCfg: &UserConfig{
@@ -168,7 +168,7 @@ func TestResolveStep(t *testing.T) {
 						}{
 							Fast:     strPtr("claude-sonnet-4.5"),
 							Standard: strPtr("claude-sonnet-4.5"),
-							Deep:  strPtr("claude-opus-4"),
+							Deep:     strPtr("claude-opus-4"),
 						},
 					},
 				},
@@ -199,7 +199,7 @@ func TestResolveStep(t *testing.T) {
 						}{
 							Fast:     strPtr("claude-sonnet-4.5"),
 							Standard: strPtr("claude-sonnet-4.5"),
-							Deep:  strPtr("claude-opus-4"),
+							Deep:     strPtr("claude-opus-4"),
 						},
 					},
 				},
@@ -248,7 +248,7 @@ func TestResolveStep(t *testing.T) {
 						}{
 							// Missing fast tier
 							Standard: strPtr("claude-sonnet-4.5"),
-							Deep:  strPtr("claude-opus-4"),
+							Deep:     strPtr("claude-opus-4"),
 						},
 					},
 				},
@@ -279,7 +279,7 @@ func TestResolveStep(t *testing.T) {
 						}{
 							Fast:     strPtr("claude-sonnet-4.5"),
 							Standard: strPtr("claude-sonnet-4.5"),
-							Deep:  strPtr("claude-opus-4"),
+							Deep:     strPtr("claude-opus-4"),
 						},
 					},
 					"cursor": {
@@ -290,7 +290,7 @@ func TestResolveStep(t *testing.T) {
 						}{
 							Fast:     strPtr("gpt-4o-mini"),
 							Standard: strPtr("gpt-4o"),
-							Deep:  strPtr("o1-preview"),
+							Deep:     strPtr("o1-preview"),
 						},
 					},
 				},
@@ -303,8 +303,8 @@ func TestResolveStep(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:     "nil configs use defaults",
-			stepName: "code",
+			name:       "nil configs use defaults",
+			stepName:   "code",
 			projectCfg: nil,
 			userCfg:    nil,
 			expected: &ResolvedConfig{
@@ -315,8 +315,8 @@ func TestResolveStep(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:     "empty step name still resolves",
-			stepName: "",
+			name:       "empty step name still resolves",
+			stepName:   "",
 			projectCfg: &ProjectConfig{},
 			userCfg:    &UserConfig{},
 			expected: &ResolvedConfig{
@@ -394,7 +394,7 @@ func TestResolveStep(t *testing.T) {
 				}{
 					Fast:     strPtr("global-fast-model"),
 					Standard: strPtr("global-balanced-model"),
-					Deep:  strPtr("global-capable-model"),
+					Deep:     strPtr("global-capable-model"),
 				},
 			},
 			expected: &ResolvedConfig{
@@ -651,11 +651,11 @@ func TestResolveModelTier(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:     "literal model passthrough",
-			modelStr: "gpt-4o",
-			tool:     "cursor",
-			userCfg:  &UserConfig{},
-			expected: "gpt-4o",
+			name:        "literal model passthrough",
+			modelStr:    "gpt-4o",
+			tool:        "cursor",
+			userCfg:     &UserConfig{},
+			expected:    "gpt-4o",
 			expectError: false,
 		},
 		{
@@ -743,11 +743,11 @@ func TestResolveModelTier(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:     "custom literal model",
-			modelStr: "my-custom-model-v2",
-			tool:     "any-tool",
-			userCfg:  &UserConfig{},
-			expected: "my-custom-model-v2",
+			name:        "custom literal model",
+			modelStr:    "my-custom-model-v2",
+			tool:        "any-tool",
+			userCfg:     &UserConfig{},
+			expected:    "my-custom-model-v2",
 			expectError: false,
 		},
 		{

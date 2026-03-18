@@ -31,7 +31,9 @@ var versionCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to format version: %w", err)
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), output)
+		if _, err := fmt.Fprintln(cmd.OutOrStdout(), output); err != nil {
+			return fmt.Errorf("failed to write output: %w", err)
+		}
 
 		return nil
 	},

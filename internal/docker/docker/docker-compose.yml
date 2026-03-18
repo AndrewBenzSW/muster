@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  dev-agent:
+    build:
+      context: .
+      dockerfile: agent.Dockerfile
+    image: muster-dev-agent:latest
+    container_name: dev-agent
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    environment:
+      # Base environment - auth and user config will be merged at runtime
+      HTTP_PROXY: http://proxy:3128
+      HTTPS_PROXY: http://proxy:3128
+      NO_PROXY: localhost,127.0.0.1,::1
+    volumes:
+      # Workspace volumes added at runtime
+    networks:
+      - muster-net
+    depends_on:
+      - proxy
+    restart: unless-stopped
+
+  proxy:
+    build:
+      context: .
+      dockerfile: proxy.Dockerfile
+    image: muster-proxy:latest
+    container_name: proxy
+    networks:
+      - muster-net
+    restart: unless-stopped
+
+networks:
+  muster-net:
+    driver: bridge

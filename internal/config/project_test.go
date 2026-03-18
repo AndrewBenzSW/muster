@@ -13,7 +13,7 @@ func TestLoadProjectConfig_BaseOnly(t *testing.T) {
 	// Create temp directory with only base config
 	tmpDir := t.TempDir()
 	musterDir := filepath.Join(tmpDir, ".muster")
-	require.NoError(t, os.MkdirAll(musterDir, 0755))
+	require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory permissions
 
 	baseConfig := `defaults:
   tool: claude-code
@@ -24,7 +24,7 @@ pipeline:
     tool: claude-code
     model: claude-opus-4
 `
-	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(baseConfig), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(baseConfig), 0644)) //nolint:gosec // G306: Test file permissions
 
 	config, err := LoadProjectConfig(tmpDir)
 	require.NoError(t, err)
@@ -41,13 +41,13 @@ func TestLoadProjectConfig_BackwardCompat(t *testing.T) {
 	// Create temp directory with .dev-agent config (backward compatibility)
 	tmpDir := t.TempDir()
 	devAgentDir := filepath.Join(tmpDir, ".dev-agent")
-	require.NoError(t, os.MkdirAll(devAgentDir, 0755))
+	require.NoError(t, os.MkdirAll(devAgentDir, 0755)) //nolint:gosec // G301: Test directory permissions
 
 	baseConfig := `defaults:
   tool: cursor
   provider: openai
 `
-	require.NoError(t, os.WriteFile(filepath.Join(devAgentDir, "config.yml"), []byte(baseConfig), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(devAgentDir, "config.yml"), []byte(baseConfig), 0644)) //nolint:gosec // G306: Test file permissions
 
 	config, err := LoadProjectConfig(tmpDir)
 	require.NoError(t, err)
@@ -59,10 +59,10 @@ func TestLoadProjectConfig_BackwardCompat(t *testing.T) {
 
 func TestLoadProjectConfig_DeepMerge(t *testing.T) {
 	tests := []struct {
-		name           string
-		baseConfig     string
-		localConfig    string
-		verifyFunc     func(t *testing.T, config *ProjectConfig)
+		name        string
+		baseConfig  string
+		localConfig string
+		verifyFunc  func(t *testing.T, config *ProjectConfig)
 	}{
 		{
 			name: "field-level override in defaults",
@@ -200,10 +200,10 @@ pipeline:
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
 			musterDir := filepath.Join(tmpDir, ".muster")
-			require.NoError(t, os.MkdirAll(musterDir, 0755))
+			require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory permissions
 
-			require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(tt.baseConfig), 0644))
-			require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.local.yml"), []byte(tt.localConfig), 0644))
+			require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(tt.baseConfig), 0644))        //nolint:gosec // G306: Test file permissions
+			require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.local.yml"), []byte(tt.localConfig), 0644)) //nolint:gosec // G306: Test file permissions
 
 			config, err := LoadProjectConfig(tmpDir)
 			require.NoError(t, err)
@@ -234,8 +234,8 @@ func TestLoadProjectConfig_Errors(t *testing.T) {
 			setup: func(t *testing.T) string {
 				tmpDir := t.TempDir()
 				musterDir := filepath.Join(tmpDir, ".muster")
-				require.NoError(t, os.MkdirAll(musterDir, 0755))
-				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte("invalid: yaml: content: ["), 0644))
+				require.NoError(t, os.MkdirAll(musterDir, 0755))                                                                    //nolint:gosec // G301: Test directory permissions
+				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte("invalid: yaml: content: ["), 0644)) //nolint:gosec // G306: Test file permissions
 				return tmpDir
 			},
 			wantErr:     true,
@@ -246,9 +246,9 @@ func TestLoadProjectConfig_Errors(t *testing.T) {
 			setup: func(t *testing.T) string {
 				tmpDir := t.TempDir()
 				musterDir := filepath.Join(tmpDir, ".muster")
-				require.NoError(t, os.MkdirAll(musterDir, 0755))
-				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte("defaults:\n  tool: claude-code"), 0644))
-				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.local.yml"), []byte("invalid: [yaml"), 0644))
+				require.NoError(t, os.MkdirAll(musterDir, 0755))                                                                         //nolint:gosec // G301: Test directory permissions
+				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte("defaults:\n  tool: claude-code"), 0644)) //nolint:gosec // G306: Test file permissions
+				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.local.yml"), []byte("invalid: [yaml"), 0644))           //nolint:gosec // G306: Test file permissions
 				return tmpDir
 			},
 			wantErr:     true,
@@ -283,8 +283,8 @@ func TestMergeProjectConfigs(t *testing.T) {
 		verifyFunc func(t *testing.T, result *ProjectConfig)
 	}{
 		{
-			name:     "nil base with override",
-			base:     nil,
+			name: "nil base with override",
+			base: nil,
 			override: &ProjectConfig{
 				Defaults: &DefaultsConfig{
 					Tool: strPtr("claude-code"),
@@ -442,12 +442,12 @@ func TestLoadProjectConfig_WithTestdata(t *testing.T) {
 			setupFunc: func(t *testing.T) string {
 				tmpDir := t.TempDir()
 				musterDir := filepath.Join(tmpDir, ".muster")
-				require.NoError(t, os.MkdirAll(musterDir, 0755))
+				require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory permissions
 
 				// Copy project-full.yml
-				data, err := os.ReadFile("testdata/project-full.yml")
+				data, err := os.ReadFile("testdata/project-full.yml") //nolint:gosec // G304: Test fixture path
 				require.NoError(t, err)
-				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), data, 0644))
+				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), data, 0644)) //nolint:gosec // G306: Test file permissions
 
 				return tmpDir
 			},
@@ -467,12 +467,12 @@ func TestLoadProjectConfig_WithTestdata(t *testing.T) {
 			setupFunc: func(t *testing.T) string {
 				tmpDir := t.TempDir()
 				musterDir := filepath.Join(tmpDir, ".muster")
-				require.NoError(t, os.MkdirAll(musterDir, 0755))
+				require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory permissions
 
 				// Copy project-minimal.yml
-				data, err := os.ReadFile("testdata/project-minimal.yml")
+				data, err := os.ReadFile("testdata/project-minimal.yml") //nolint:gosec // G304: Test fixture path
 				require.NoError(t, err)
-				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), data, 0644))
+				require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), data, 0644)) //nolint:gosec // G306: Test file permissions
 
 				return tmpDir
 			},

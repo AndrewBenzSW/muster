@@ -18,12 +18,12 @@ func AssertGoldenFile(t *testing.T, goldenPath string, actual string, update boo
 	if update {
 		// Ensure directory exists
 		dir := filepath.Dir(goldenPath)
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0755); err != nil { //nolint:gosec // G301: Test directory permissions
 			t.Fatalf("failed to create golden file directory: %v", err)
 		}
 
 		// Write actual content to golden file
-		if err := os.WriteFile(goldenPath, []byte(actual), 0644); err != nil {
+		if err := os.WriteFile(goldenPath, []byte(actual), 0644); err != nil { //nolint:gosec // G306: Test file permissions
 			t.Fatalf("failed to update golden file: %v", err)
 		}
 		t.Logf("Updated golden file: %s", goldenPath)
@@ -31,7 +31,7 @@ func AssertGoldenFile(t *testing.T, goldenPath string, actual string, update boo
 	}
 
 	// Read golden file
-	expected, err := os.ReadFile(goldenPath)
+	expected, err := os.ReadFile(goldenPath) //nolint:gosec // G304: Test fixture path
 	if err != nil {
 		t.Fatalf("failed to read golden file %s: %v", goldenPath, err)
 	}

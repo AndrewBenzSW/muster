@@ -11,10 +11,10 @@ import (
 
 func TestLoadUserConfig(t *testing.T) {
 	tests := []struct {
-		name      string
-		fixture   string
-		wantErr   bool
-		validate  func(t *testing.T, cfg *UserConfig)
+		name     string
+		fixture  string
+		wantErr  bool
+		validate func(t *testing.T, cfg *UserConfig)
 	}{
 		{
 			name:    "valid full config",
@@ -123,15 +123,16 @@ func TestLoadUserConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup: create malformed YAML if needed
 			var path string
-			if tt.fixture == "malformed.yml" {
+			switch tt.fixture {
+			case "malformed.yml":
 				tmpDir := t.TempDir()
 				path = filepath.Join(tmpDir, "malformed.yml")
-				err := os.WriteFile(path, []byte("invalid: yaml: content:\n  - missing\n    closing"), 0644)
+				err := os.WriteFile(path, []byte("invalid: yaml: content:\n  - missing\n    closing"), 0644) //nolint:gosec // G306: Test file permissions
 				require.NoError(t, err)
-			} else if tt.fixture == "nonexistent.yml" {
+			case "nonexistent.yml":
 				// Use a path that doesn't exist
 				path = filepath.Join(t.TempDir(), "nonexistent.yml")
-			} else {
+			default:
 				// Use testdata fixtures
 				path = filepath.Join("testdata", tt.fixture)
 			}
@@ -166,7 +167,7 @@ unknown_field: should_be_ignored
 another_unknown:
   nested: value
 `
-	err := os.WriteFile(path, []byte(content), 0644)
+	err := os.WriteFile(path, []byte(content), 0644) //nolint:gosec // G306: Test file permissions
 	require.NoError(t, err)
 
 	// Load config - should succeed and ignore unknown fields
@@ -270,7 +271,7 @@ func TestLoadUserConfig_PermissionDenied(t *testing.T) {
   provider: anthropic
   model: claude-sonnet-4.5
 `
-	err := os.WriteFile(configPath, []byte(content), 0644)
+	err := os.WriteFile(configPath, []byte(content), 0644) //nolint:gosec // G306: Test file permissions
 	require.NoError(t, err)
 
 	// Make the file unreadable (000 permissions)

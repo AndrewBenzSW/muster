@@ -20,7 +20,7 @@ func TestAssertGoldenFile_UpdateTrue_CreatesFile(t *testing.T) {
 	AssertGoldenFile(t, goldenPath, actualContent, true)
 
 	// Verify the file was created
-	content, err := os.ReadFile(goldenPath)
+	content, err := os.ReadFile(goldenPath) //nolint:gosec // G304: Test file path
 	require.NoError(t, err, "golden file should be created")
 	assert.Equal(t, actualContent, string(content), "file content should match")
 }
@@ -31,7 +31,7 @@ func TestAssertGoldenFile_UpdateFalse_ComparesCorrectly(t *testing.T) {
 	goldenPath := filepath.Join(tmpDir, "golden.txt")
 	expectedContent := "expected content"
 
-	err := os.WriteFile(goldenPath, []byte(expectedContent), 0644)
+	err := os.WriteFile(goldenPath, []byte(expectedContent), 0644) //nolint:gosec // G306: Test file permissions
 	require.NoError(t, err, "setup should succeed")
 
 	// Test with matching content (should not fail)
@@ -44,7 +44,7 @@ func TestAssertGoldenFile_UpdateFalse_FailsWhenContentDoesNotMatch(t *testing.T)
 	goldenPath := filepath.Join(tmpDir, "golden.txt")
 	expectedContent := "expected content"
 
-	err := os.WriteFile(goldenPath, []byte(expectedContent), 0644)
+	err := os.WriteFile(goldenPath, []byte(expectedContent), 0644) //nolint:gosec // G306: Test file permissions
 	require.NoError(t, err, "setup should succeed")
 
 	// Create a mock testing.T to capture the failure

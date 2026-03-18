@@ -1,0 +1,19 @@
+# Complete dev-agent config
+allowed_domains:
+  - "*.anthropic.com"
+  - "*.openai.com"
+  - "github.com"
+  - "api.example.com"
+
+env:
+  DEBUG: "true"
+  LOG_LEVEL: "info"
+  API_TIMEOUT: "30"
+
+volumes:
+  - "/host/data:/container/data"
+  - "/host/cache:/container/cache:ro"
+
+networks:
+  - "muster-net"
+  - "external-net"

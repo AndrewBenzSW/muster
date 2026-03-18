@@ -97,11 +97,11 @@ func TestGoldenFileInteractiveTrue(t *testing.T) {
 				ModelTiers: &struct {
 					Fast     *string `yaml:"fast"`
 					Standard *string `yaml:"standard"`
-					Deep  *string `yaml:"deep"`
+					Deep     *string `yaml:"deep"`
 				}{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
-					Deep:  stringPtr("claude-opus-4"),
+					Deep:     stringPtr("claude-opus-4"),
 				},
 			},
 		},
@@ -131,11 +131,11 @@ func TestGoldenFileInteractiveFalse(t *testing.T) {
 				ModelTiers: &struct {
 					Fast     *string `yaml:"fast"`
 					Standard *string `yaml:"standard"`
-					Deep  *string `yaml:"deep"`
+					Deep     *string `yaml:"deep"`
 				}{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
-					Deep:  stringPtr("claude-opus-4"),
+					Deep:     stringPtr("claude-opus-4"),
 				},
 			},
 		},
@@ -165,11 +165,11 @@ func TestGoldenFileModelsPopulation(t *testing.T) {
 				ModelTiers: &struct {
 					Fast     *string `yaml:"fast"`
 					Standard *string `yaml:"standard"`
-					Deep  *string `yaml:"deep"`
+					Deep     *string `yaml:"deep"`
 				}{
 					Fast:     stringPtr("gemma3:4b"),
 					Standard: stringPtr("qwen3:14b"),
-					Deep:  stringPtr("qwen3:235b"),
+					Deep:     stringPtr("qwen3:235b"),
 				},
 			},
 		},
@@ -209,11 +209,11 @@ func TestGoldenFileExecutePlan(t *testing.T) {
 				ModelTiers: &struct {
 					Fast     *string `yaml:"fast"`
 					Standard *string `yaml:"standard"`
-					Deep  *string `yaml:"deep"`
+					Deep     *string `yaml:"deep"`
 				}{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
-					Deep:  stringPtr("claude-opus-4"),
+					Deep:     stringPtr("claude-opus-4"),
 				},
 			},
 		},
@@ -460,18 +460,18 @@ func compareGolden(t *testing.T, goldenFile string, actual string) {
 
 	if *update {
 		// Create testdata directory if it doesn't exist
-		err := os.MkdirAll("testdata", 0755)
+		err := os.MkdirAll("testdata", 0755) //nolint:gosec // G301: Test directory permissions
 		require.NoError(t, err)
 
 		// Write the golden file
-		err = os.WriteFile(goldenPath, []byte(actual), 0644)
+		err = os.WriteFile(goldenPath, []byte(actual), 0644) //nolint:gosec // G306: Test file permissions
 		require.NoError(t, err)
 		t.Logf("Updated golden file: %s", goldenPath)
 		return
 	}
 
 	// Read the golden file
-	expected, err := os.ReadFile(goldenPath)
+	expected, err := os.ReadFile(goldenPath) //nolint:gosec // G304: Test fixture path
 	require.NoError(t, err, "failed to read golden file: %s", goldenPath)
 
 	// Normalize line endings for cross-platform comparison

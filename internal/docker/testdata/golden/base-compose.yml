@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+    app:
+        image: alpine:latest
+        environment:
+            ENV: test
+        volumes:
+            - ./data:/data
+name: test-project

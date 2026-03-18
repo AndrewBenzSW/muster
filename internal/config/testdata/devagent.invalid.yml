@@ -1,0 +1,6 @@
+# Invalid YAML - malformed structure
+allowed_domains:
+  - "anthropic.com"
+  invalid_key: [this is not valid
+env:
+  KEY: value

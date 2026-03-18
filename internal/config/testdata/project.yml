@@ -1,0 +1,31 @@
+# Complete project config
+defaults:
+  tool: cursor
+  provider: openai
+  model: gpt-4o
+
+pipeline:
+  plan:
+    tool: claude-code
+    provider: anthropic
+    model: claude-opus-4
+    timeout: 600
+  execute:
+    tool: claude-code
+    provider: anthropic
+    model: claude-sonnet-4.5
+    timeout: 1200
+  verify:
+    tool: cursor
+    provider: openai
+    model: gpt-4o
+    timeout: 300
+  review:
+    tool: claude-code
+    provider: anthropic
+    model: claude-sonnet-4.5
+    timeout: 300
+
+local_overrides:
+  dev_mode: true
+  skip_verify: false

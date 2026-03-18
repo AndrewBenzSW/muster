@@ -41,7 +41,7 @@ func LoadUserConfig(path string) (*UserConfig, error) {
 	}
 
 	// Read the file
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: Path from config system, not user input
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file %s: %w", path, err)
 	}

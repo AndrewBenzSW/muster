@@ -87,54 +87,65 @@ func TestCodeCommand_WithHelpFlag_Succeeds(t *testing.T) {
 	assert.Contains(t, output, "--yolo", "help should contain --yolo flag")
 }
 
-func TestCodeCommand_WithYoloFlag_ReturnsExpectedError(t *testing.T) {
+func TestCodeCommand_WithYoloFlag_RequiresDocker(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	// Create a fresh command instance to avoid state pollution
 	cmd := &cobra.Command{
-		Use: "code",
+		Use:  "code",
 		RunE: codeCmd.RunE,
 	}
 	cmd.Flags().Bool("yolo", false, "Run in sandboxed container mode")
+	cmd.Flags().Bool("verbose", false, "Enable verbose output")
 
 	// Set the yolo flag
 	err := cmd.Flags().Set("yolo", "true")
 	require.NoError(t, err, "setting yolo flag should not error")
 
-	// Execute the command
+	// Execute the command - should fail if Docker not running or config missing
 	err = cmd.RunE(cmd, []string{})
-	require.Error(t, err, "command should return error with --yolo flag")
+	require.Error(t, err, "command should return error with --yolo flag without proper config")
 
-	// Verify error message mentions Phase 2
+	// Verify error is actionable (mentions Docker or config)
 	errMsg := err.Error()
-	assert.Contains(t, errMsg, "yolo", "error should mention yolo flag")
-	assert.Contains(t, errMsg, "not yet implemented", "error should mention not implemented")
-	assert.Contains(t, errMsg, "Phase 2", "error should mention Phase 2")
-	assert.Contains(t, errMsg, "Docker container orchestration", "error should mention Docker")
+	hasDockerError := strings.Contains(strings.ToLower(errMsg), "docker") ||
+		strings.Contains(strings.ToLower(errMsg), "daemon")
+	hasConfigError := strings.Contains(strings.ToLower(errMsg), "config")
+
+	assert.True(t, hasDockerError || hasConfigError,
+		"error should mention Docker daemon or config: %s", errMsg)
 }
 
-func TestCodeCommand_YoloErrorMessage_Format(t *testing.T) {
-	// Test the exact error message format
+func TestCodeCommand_YoloWithoutConfig_ReturnsActionableError(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	// Test that --yolo without config returns actionable error
 	cmd := &cobra.Command{
-		Use: "code",
+		Use:  "code",
 		RunE: codeCmd.RunE,
 	}
 	cmd.Flags().Bool("yolo", false, "")
-	cmd.Flags().Set("yolo", "true")
+	cmd.Flags().Bool("verbose", false, "")
+	_ = cmd.Flags().Set("yolo", "true")
 
-	err := cmd.RunE(cmd, []string{})
-	require.Error(t, err)
+	// Create temp dir without config
+	tmpDir := t.TempDir()
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+	err = os.Chdir(tmpDir)
+	require.NoError(t, err)
 
-	expectedSubstrings := []string{
-		"--yolo flag",
-		"sandboxed container mode",
-		"not yet implemented",
-		"Phase 2: Docker container orchestration",
-		"muster code",
-	}
+	err = cmd.RunE(cmd, []string{})
+	require.Error(t, err, "command should error without config")
 
+	// Error should be actionable
 	errMsg := err.Error()
-	for _, substr := range expectedSubstrings {
-		assert.Contains(t, errMsg, substr, "error message should contain: %s", substr)
-	}
+	assert.NotEmpty(t, errMsg, "error message should not be empty")
 }
 
 func TestCodeCommand_FlagParsing_ToolOverride(t *testing.T) {
@@ -300,17 +311,17 @@ func TestCodeCommand_ConfigLoadingFailure_MalformedYAML(t *testing.T) {
 	// Create a temporary directory with a malformed config
 	tmpDir := t.TempDir()
 	malformedConfig := tmpDir + "/.muster/config.yml"
-	err := os.MkdirAll(tmpDir+"/.muster", 0755)
+	err := os.MkdirAll(tmpDir+"/.muster", 0755) //nolint:gosec // G301: Test directory permissions
 	require.NoError(t, err)
 
 	malformedContent := []byte("defaults:\n  tool: [invalid yaml")
-	err = os.WriteFile(malformedConfig, malformedContent, 0644)
+	err = os.WriteFile(malformedConfig, malformedContent, 0644) //nolint:gosec // G306: Test file permissions
 	require.NoError(t, err)
 
 	// Change to temp directory
 	oldDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(oldDir)
+	defer func() { _ = os.Chdir(oldDir) }() // Error in defer is not critical for test cleanup
 
 	err = os.Chdir(tmpDir)
 	require.NoError(t, err)

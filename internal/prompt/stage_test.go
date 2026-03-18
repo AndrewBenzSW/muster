@@ -148,7 +148,7 @@ func TestStageSkillsFilesReadableAndNonEmpty(t *testing.T) {
 		filePath := filepath.Join(skillsDir, file)
 
 		// Read the file
-		content, err := os.ReadFile(filePath)
+		content, err := os.ReadFile(filePath) //nolint:gosec // G304: Test file path
 		require.NoError(t, err, "should be able to read file %s", file)
 
 		// Verify non-empty
@@ -186,7 +186,7 @@ func TestStageSkillsLFLineEndingsPreserved(t *testing.T) {
 
 	for _, file := range filesToCheck {
 		filePath := filepath.Join(skillsDir, file)
-		content, err := os.ReadFile(filePath)
+		content, err := os.ReadFile(filePath) //nolint:gosec // G304: Test file path
 		require.NoError(t, err, "should be able to read file %s", file)
 
 		contentStr := string(content)
@@ -334,7 +334,7 @@ func TestStageSkillsFileContentForwardSlashes(t *testing.T) {
 
 	for _, file := range skillFiles {
 		filePath := filepath.Join(skillsDir, file)
-		content, err := os.ReadFile(filePath)
+		content, err := os.ReadFile(filePath) //nolint:gosec // G304: Test file path
 		require.NoError(t, err, "should be able to read file %s", file)
 
 		contentStr := string(content)
@@ -409,7 +409,7 @@ func TestStageSkillsRelativePathsInFiles(t *testing.T) {
 
 	// Read a SKILL.md file and check for relative file references
 	skillPath := filepath.Join(skillsDir, "roadmap-plan-feature", "SKILL.md")
-	content, err := os.ReadFile(skillPath)
+	content, err := os.ReadFile(skillPath) //nolint:gosec // G304: Test file path
 	require.NoError(t, err, "should be able to read SKILL.md")
 
 	contentStr := string(content)
@@ -679,7 +679,7 @@ func TestStageSkillsCleanupWithReadOnlyFile(t *testing.T) {
 
 	// Create a read-only file in the temp directory
 	readOnlyFile := filepath.Join(tmpDir, "readonly.txt")
-	err = os.WriteFile(readOnlyFile, []byte("test"), 0444) // Read-only permissions
+	err = os.WriteFile(readOnlyFile, []byte("test"), 0444) //nolint:gosec // G306: Test file with intentional read-only permissions
 	require.NoError(t, err, "should create read-only file")
 
 	// Verify file is read-only

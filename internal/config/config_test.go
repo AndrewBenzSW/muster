@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -356,6 +358,179 @@ func TestPipelineStepConfigPartialFields(t *testing.T) {
 
 	assert.Equal(t, "step-model", *roundtrip.Model)
 	assert.Nil(t, roundtrip.Tool)
+}
+
+func TestValidateMultipleMissingProviders(t *testing.T) {
+	cfg := &Config{
+		User: &UserConfig{
+			Defaults: &DefaultsConfig{
+				Provider: strPtr("missing-provider-1"),
+			},
+		},
+		Project: &ProjectConfig{
+			Pipeline: map[string]*PipelineStepConfig{
+				"code": {
+					Provider: strPtr("missing-provider-2"),
+				},
+			},
+		},
+	}
+
+	errs := cfg.Validate()
+
+	// Should collect multiple provider errors
+	require.NotEmpty(t, errs)
+	assert.GreaterOrEqual(t, len(errs), 2, "should collect at least 2 missing provider errors")
+
+	// Check error messages contain actionable instructions
+	errStrs := make([]string, len(errs))
+	for i, err := range errs {
+		errStrs[i] = err.Error()
+	}
+
+	allErrors := strings.Join(errStrs, "\n")
+	assert.Contains(t, allErrors, "missing-provider-1")
+	assert.Contains(t, allErrors, "missing-provider-2")
+	assert.Contains(t, allErrors, "~/.config/muster/config.yml")
+}
+
+func TestValidateMissingEnvVar(t *testing.T) {
+	// Create a provider that requires an env var that doesn't exist
+	uniqueEnvVar := "MUSTER_TEST_MISSING_KEY_12345"
+
+	// Ensure the env var is NOT set
+	_ = os.Unsetenv(uniqueEnvVar)
+
+	cfg := &Config{
+		User: &UserConfig{
+			Defaults: &DefaultsConfig{
+				Provider: strPtr("test-provider"),
+			},
+			Providers: map[string]*ProviderConfig{
+				"test-provider": {
+					APIKeyEnv: strPtr(uniqueEnvVar),
+				},
+			},
+		},
+	}
+
+	errs := cfg.Validate()
+
+	// Should have error for missing env var
+	require.NotEmpty(t, errs)
+
+	// Find the env var error
+	var envVarError error
+	for _, err := range errs {
+		if strings.Contains(err.Error(), uniqueEnvVar) {
+			envVarError = err
+			break
+		}
+	}
+	require.NotNil(t, envVarError, "should have error for missing env var")
+
+	// Check error message contains actionable fix instructions
+	errMsg := envVarError.Error()
+	assert.Contains(t, errMsg, uniqueEnvVar, "should mention the env var name")
+	assert.Contains(t, errMsg, "export", "should include export command")
+	assert.Contains(t, errMsg, "~/.config/muster/config.yml", "should mention config file location")
+}
+
+func TestValidateUnknownTool(t *testing.T) {
+	cfg := &Config{
+		User: &UserConfig{
+			// No tools defined
+			Tools: map[string]*ToolConfig{},
+		},
+		Project: &ProjectConfig{
+			Defaults: &DefaultsConfig{
+				Tool: strPtr("unknown-tool"),
+			},
+		},
+	}
+
+	errs := cfg.Validate()
+
+	// Should have error for unknown tool
+	require.NotEmpty(t, errs)
+
+	// Find the tool error
+	var toolError error
+	for _, err := range errs {
+		if strings.Contains(err.Error(), "unknown-tool") {
+			toolError = err
+			break
+		}
+	}
+	require.NotNil(t, toolError, "should have error for unknown tool")
+
+	// Check error message contains actionable fix instructions
+	errMsg := toolError.Error()
+	assert.Contains(t, errMsg, "unknown-tool", "should mention the tool name")
+	assert.Contains(t, errMsg, "~/.config/muster/config.yml", "should mention config file location")
+	assert.Contains(t, errMsg, "under tools", "should mention tools section")
+}
+
+func TestValidateWithEnvVarSet(t *testing.T) {
+	// Create a provider with an env var that IS set
+	uniqueEnvVar := "MUSTER_TEST_PRESENT_KEY_54321"
+	_ = os.Setenv(uniqueEnvVar, "test-value")
+	defer func() { _ = os.Unsetenv(uniqueEnvVar) }()
+
+	cfg := &Config{
+		User: &UserConfig{
+			Defaults: &DefaultsConfig{
+				Provider: strPtr("test-provider"),
+			},
+			Providers: map[string]*ProviderConfig{
+				"test-provider": {
+					APIKeyEnv: strPtr(uniqueEnvVar),
+				},
+			},
+		},
+	}
+
+	errs := cfg.Validate()
+
+	// Should NOT have error for this env var (may have other errors)
+	for _, err := range errs {
+		assert.NotContains(t, err.Error(), uniqueEnvVar, "should not error on set env var")
+	}
+}
+
+func TestValidateNilConfig(t *testing.T) {
+	var cfg *Config
+	errs := cfg.Validate()
+
+	// Nil config should not panic and should return nil
+	assert.Nil(t, errs)
+}
+
+func TestValidateDefaultToolAndProvider(t *testing.T) {
+	// Using default tool and provider should validate successfully
+	cfg := &Config{
+		User: &UserConfig{
+			Defaults: &DefaultsConfig{
+				Tool:     strPtr(DefaultTool),
+				Provider: strPtr(DefaultProvider),
+			},
+			Providers: map[string]*ProviderConfig{
+				DefaultProvider: {
+					APIKeyEnv: strPtr("ANTHROPIC_API_KEY"),
+				},
+			},
+		},
+	}
+
+	// Set the env var
+	_ = os.Setenv("ANTHROPIC_API_KEY", "test-key")
+	defer func() { _ = os.Unsetenv("ANTHROPIC_API_KEY") }()
+
+	errs := cfg.Validate()
+
+	// Default tool doesn't need to be defined in tools map
+	// Should have no errors if env var is set
+	assert.Empty(t, errs)
 }
 
 // Helper functions for tests

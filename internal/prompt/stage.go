@@ -126,7 +126,7 @@ func StageSkills(ctx *PromptContext) (tmpDir string, cleanup func(), err error) 
 
 	// Create skills directory
 	skillsDir := filepath.Join(tmpDir, "skills")
-	if err := os.MkdirAll(skillsDir, 0755); err != nil {
+	if err := os.MkdirAll(skillsDir, 0755); err != nil { //nolint:gosec // G301: Standard directory permissions for skill staging
 		return tmpDir, cleanup, fmt.Errorf("failed to create skills directory: %w", err)
 	}
 
@@ -186,7 +186,7 @@ func StageSkills(ctx *PromptContext) (tmpDir string, cleanup func(), err error) 
 
 		// Create output directory
 		outDir := filepath.Dir(outPath)
-		if err := os.MkdirAll(outDir, 0755); err != nil {
+		if err := os.MkdirAll(outDir, 0755); err != nil { //nolint:gosec // G301: Standard directory permissions for skill staging
 			return fmt.Errorf("failed to create output directory %s: %w", outDir, err)
 		}
 
@@ -197,7 +197,7 @@ func StageSkills(ctx *PromptContext) (tmpDir string, cleanup func(), err error) 
 		// - Git's core.autocrlf setting handles conversions during checkout/commit if needed
 		// - Tests verify LF endings are preserved (see TestStageSkillsLFLineEndingsPreserved)
 		// This ensures consistent behavior across Linux, macOS, and Windows
-		if err := os.WriteFile(outPath, []byte(rendered), 0644); err != nil {
+		if err := os.WriteFile(outPath, []byte(rendered), 0644); err != nil { //nolint:gosec // G306: Standard file permissions for skill files
 			return fmt.Errorf("failed to write file %s: %w", outPath, err)
 		}
 
