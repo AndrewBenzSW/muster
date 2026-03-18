@@ -1,1 +1,13 @@
 .roadmap-loop/
+
+# Build artifacts
+dist/
+coverage/
+*.exe
+*.test
+*.out
+coverage.txt
+
+# OS-specific
+.DS_Store
+Thumbs.db

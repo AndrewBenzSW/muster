@@ -1,13 +1,6 @@
 {
   "items": [
     {
-      "slug": "project-bootstrap",
-      "title": "Phase 0: Project bootstrap",
-      "priority": "high",
-      "status": "in_progress",
-      "context": "Go module, Cobra root command, TTY detection, go:embed for prompts and Docker assets, Makefile, GoReleaser, GitHub Actions CI on all three platforms (Linux, macOS, Windows). Scaffold test helpers and testdata/ fixtures. Deliverable: muster version works, builds and passes tests on all three platforms."
-    },
-    {
       "slug": "prompt-staging",
       "title": "Phase 1: muster code and prompt staging",
       "priority": "high",

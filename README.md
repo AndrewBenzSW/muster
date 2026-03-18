@@ -47,6 +47,48 @@ muster uses a two-layer config system:
 - **User config** (`~/.config/muster/config.yml`) — defines available tools, providers, model tiers, and defaults.
 - **Project config** (`.muster/config.yml`) — pipeline step overrides, merge strategy, lifecycle hooks. Container settings live in `.muster/dev-agent/config.yml`. Both support `.local.yml` overrides that are gitignored.
 
+## Prerequisites
+
+- Go 1.23 or later
+
+## Building
+
+```bash
+# Build the binary (creates dist/muster or dist/muster.exe)
+make build
+
+# Run tests
+make test
+
+# Install to GOPATH/bin
+make install
+
+# See all available targets
+make help
+```
+
+## Usage
+
+Currently, only the `version` command is implemented:
+
+```bash
+./dist/muster version
+```
+
+This displays version information including the build commit and timestamp.
+
+Other commands listed above (`muster in`, `muster out`, `muster plan`, etc.) are deferred to future phases.
+
+## Makefile Targets
+
+Run `make help` to see all available targets:
+
+- `build` - Build the binary with version metadata
+- `test` - Run tests with race detector
+- `lint` - Run golangci-lint (requires golangci-lint to be installed)
+- `install` - Install binary to GOPATH
+- `clean` - Remove build artifacts
+
 ## Status
 
 Early development. See [docs/design.md](docs/design.md) for the full design document.
