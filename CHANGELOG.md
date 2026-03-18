@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Docker Container Orchestration**: `muster code --yolo` boots a sandboxed Docker container with AI coding tools, network proxy isolation, and all required provider authentication pre-configured
+- **Multi-Provider Auth Detection**: Automatic detection and injection of credentials for Bedrock (AWS SSO with credential pre-resolution), Max (credential file mounting), Anthropic/OpenRouter (API key passthrough), and local inference servers (localhost URL rewriting to `host.docker.internal`)
+- **Dynamic Compose Generation**: Programmatic Docker Compose file generation from embedded base template with runtime overrides for auth, workspace mounts, proxy domains, and container labels — written atomically with validation via `docker compose config`
+- **Container Lifecycle Management**: Start, stop, exec, and list containers via hybrid Docker SDK + Compose CLI architecture with label-based discovery (`muster.managed`, `muster.project`, `muster.slug`, `muster.created`)
+- **`muster down` Command**: Tear down containers by slug, `--all` for entire project, or `--orphans` to find containers whose roadmap item is no longer in progress (with 1-hour age threshold to protect active sessions)
+- **Dev-Agent Config**: Parse `.muster/dev-agent/config.yml` for container environment settings (allowed domains, environment variables, extra volumes, networks) with `.local.yml` override support
+- **Docker Asset Extraction**: Embedded Docker assets (Dockerfiles, compose files, proxy configs) extracted to `~/.cache/muster/docker-assets/{hash}/` with atomic temp-dir-then-rename and filesystem lock for concurrent safety
+- **Git Worktree Detection**: Automatic detection of git worktree vs main repo via `git rev-parse` for correct volume mounting (worktree read-write, shared `.git` read-only)
+- **Docker Compose Version Check**: Validates Docker Compose v2+ is installed at startup with clear upgrade instructions for v1 users
+- **Proxy-Based Network Isolation**: Squid proxy container with merged domain allowlist from embedded defaults, provider-specific domains, and project configuration
+
+### Changed
+
+- **Config Validation**: Validation now collects all errors (missing providers, invalid tiers, missing API keys) and presents them together with actionable fix instructions including example commands
+- **Deep Merge Semantics**: Clarified and documented merge behavior for `.local.yml` overrides — `null` removes fields, empty maps/lists are valid replacement values, lists always replace entirely
+
 ## [0.2.0] - 2026-03-18
 
 ### Added
