@@ -1,0 +1,4 @@
+defaults:
+  tool: claude-code
+  provider: anthropic
+  model: [this is not valid yaml syntax

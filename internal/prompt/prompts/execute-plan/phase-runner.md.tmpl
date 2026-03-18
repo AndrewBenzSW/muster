@@ -1,0 +1,53 @@
+# Phase Runner Instructions
+
+This file contains instructions for the phase runner agent responsible for coordinating task execution within a phase.
+
+**Tool:** {{.Tool}}
+**Model:** {{.Model}}
+
+{{if .Interactive}}
+## Team-Based Phase Coordination
+
+As a phase runner, you coordinate multiple worker agents to complete tasks in parallel where possible.
+
+### Responsibilities
+
+1. Parse phase structure from implementation plan
+2. Identify task dependencies
+3. Create worker agents for independent tasks
+4. Monitor worker progress via messages
+5. Coordinate dependent task execution
+6. Aggregate results and report phase completion
+
+### Communication Protocol
+
+- Send task assignments via `SendMessage` to worker team
+- Receive completion notifications from workers
+- Report phase status to orchestrator
+
+{{else}}
+## Sequential Phase Execution
+
+In foreground mode, execute tasks sequentially according to their dependencies.
+
+### Responsibilities
+
+1. Parse phase structure from implementation plan
+2. Execute tasks in dependency order
+3. Run build/test commands as specified
+4. Track task completion in state files
+5. Report phase completion status
+
+{{end}}
+
+## Task Execution Order
+
+- Execute tasks with no dependencies first
+- Execute dependent tasks only after their dependencies complete
+- Run verification commands after all tasks complete
+
+## Error Handling
+
+- Stop phase execution on task failure
+- Record error details in state file
+- Report failure to orchestrator with context

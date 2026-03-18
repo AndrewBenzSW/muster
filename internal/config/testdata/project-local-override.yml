@@ -1,0 +1,8 @@
+# Local override config
+defaults:
+  tool: claude-code
+  model: claude-opus-4
+
+local_overrides:
+  dev_mode: true
+  skip_verify: true

@@ -1,0 +1,50 @@
+---
+name: roadmap-execute-plan
+description: "Execute an implementation plan by working through phases and tasks"
+argument-hint: "<plan-slug>"
+model: {{.Models.Standard}}
+effort: high
+disable-model-invocation: false
+user-invocable: true
+---
+
+# Execute Implementation Plan
+
+This skill executes an implementation plan by working through its phases and tasks sequentially.
+
+**Tool:** {{.Tool}}
+**Provider:** {{.Provider}}
+**Model:** {{.Model}}
+
+{{if .Interactive}}
+## Interactive Execution Mode
+
+In interactive mode, the execution orchestrator coordinates phase runners and worker agents to complete the implementation plan.
+
+See [phase-runner.md](phase-runner.md) for phase coordination details.
+See [worker-prompt.md](worker-prompt.md) for worker agent instructions.
+
+{{else}}
+## Foreground Execution Mode
+
+In foreground mode, tasks are executed directly by the agent in sequence.
+
+See [phase-runner.md](phase-runner.md) for execution details.
+See [worker-prompt.md](worker-prompt.md) for task execution instructions.
+
+{{end}}
+
+## Execution Flow
+
+1. Load implementation plan from `.plan/<slug>/implementation/implementation-plan.md`
+2. Validate plan structure and dependencies
+3. Execute phases in dependency order
+4. Track progress in state files
+5. Run verification after each phase
+6. Handle errors and retry logic
+
+## Available Models
+
+- Fast: {{.Models.Fast}}
+- Standard: {{.Models.Standard}}
+- Deep: {{.Models.Deep}}

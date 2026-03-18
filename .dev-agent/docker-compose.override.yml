@@ -1,0 +1,7 @@
+# Override the agent image to include Go toolchain.
+# Only changes the Dockerfile — build context remains the dev-agent repo
+# so COPY directives for entrypoint, firewall, and skills still resolve.
+services:
+  agent:
+    build:
+      dockerfile: ${PROJECT_DIR}/.dev-agent/Dockerfile

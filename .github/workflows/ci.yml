@@ -1,8 +1,26 @@
+# Cross-Platform CI Workflow
+#
+# This workflow tests the codebase on all three major platforms:
+# - ubuntu-latest (Linux): Tests Unix path handling, /tmp directory, LF line endings
+# - macos-latest (macOS): Tests Unix path handling, /var/folders temp, LF line endings
+# - windows-latest (Windows): Tests Windows path handling, %TEMP% directory, native PowerShell
+#
+# Platform-specific considerations:
+# - Path separators: filepath.Join() handles / vs \ automatically
+# - Temp directories: os.TempDir() returns platform-appropriate locations
+# - Config directories: os.UserConfigDir() returns ~/.config (Linux), ~/Library/Application Support (macOS), %AppData% (Windows)
+# - Line endings: Tests verify LF (\n) is preserved across all platforms
+# - Race detector: Enabled to catch concurrency issues that may be platform-specific
+# - Coverage: Collected per-platform to identify platform-specific code paths
+#
+# Go's standard library provides excellent cross-platform abstractions, but tests
+# explicitly verify correct behavior on each platform using runtime.GOOS conditionals.
+
 name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: ['**']  # Run on all branches
   pull_request:
 
 jobs:
@@ -26,8 +44,18 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
-      - name: Run tests
+      - name: Run tests with race detector
         run: go test -v -race ./...
+
+      - name: Run tests with coverage
+        run: go test ./... -coverprofile=coverage.out -covermode=atomic
+
+      - name: Upload coverage to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: coverage.out
+          retention-days: 30
 
       - name: Build binary
         run: make build

@@ -1,13 +1,6 @@
 {
   "items": [
     {
-      "slug": "prompt-staging",
-      "title": "Phase 1: muster code and prompt staging",
-      "priority": "high",
-      "status": "in_progress",
-      "context": "internal/prompt/ (embed, template resolution, stage to temp dir), internal/config/ (parse user config for model tiers and defaults). cmd/code.go stages skills and invokes claude --plugin-dir or opencode. Stub --yolo with error pointing to Phase 2. Table-driven tests for config step resolution and golden file tests for template rendering. Deliverable: muster code launches Claude with all workflow skills available."
-    },
-    {
       "slug": "docker-orchestration",
       "title": "Phase 2: Docker container orchestration",
       "priority": "high",

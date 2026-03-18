@@ -1,0 +1,42 @@
+---
+name: roadmap-execute-plan
+description: "Execute an implementation plan by working through phases and tasks"
+argument-hint: "<plan-slug>"
+model: claude-sonnet-4.5
+effort: high
+disable-model-invocation: false
+user-invocable: true
+---
+
+# Execute Implementation Plan
+
+This skill executes an implementation plan by working through its phases and tasks sequentially.
+
+**Tool:** claude-code
+**Provider:** anthropic
+**Model:** claude-sonnet-4.5
+
+
+## Interactive Execution Mode
+
+In interactive mode, the execution orchestrator coordinates phase runners and worker agents to complete the implementation plan.
+
+See [phase-runner.md](phase-runner.md) for phase coordination details.
+See [worker-prompt.md](worker-prompt.md) for worker agent instructions.
+
+
+
+## Execution Flow
+
+1. Load implementation plan from `.plan/<slug>/implementation/implementation-plan.md`
+2. Validate plan structure and dependencies
+3. Execute phases in dependency order
+4. Track progress in state files
+5. Run verification after each phase
+6. Handle errors and retry logic
+
+## Available Models
+
+- Fast: claude-haiku-4
+- Standard: claude-sonnet-4.5
+- Deep: claude-opus-4

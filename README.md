@@ -69,13 +69,20 @@ make help
 
 ## Usage
 
-Currently, only the `version` command is implemented:
+Currently implemented commands:
 
 ```bash
+# Display version information
 ./dist/muster version
+
+# Launch an interactive coding agent with workflow skills
+./dist/muster code
+
+# Show help for the code command
+./dist/muster code --help
 ```
 
-This displays version information including the build commit and timestamp.
+The `muster code` command launches Claude Code with a set of skills that understand the muster workflow. It uses the resolved configuration from your user and project configs to select the appropriate tool, provider, and model.
 
 Other commands listed above (`muster in`, `muster out`, `muster plan`, etc.) are deferred to future phases.
 
@@ -91,4 +98,11 @@ Run `make help` to see all available targets:
 
 ## Status
 
-Early development. See [docs/design.md](docs/design.md) for the full design document.
+Phase 1 (prompt-staging) is complete, implementing the foundation for prompt template rendering and configuration resolution. This includes:
+
+- Configuration system with 5-step resolution chain
+- Prompt template loading and rendering with template variables
+- `muster code` command that launches interactive coding agents
+- Model tier support for multi-tier tool configurations
+
+See [docs/design.md](docs/design.md) for the full design document and [CHANGELOG.md](CHANGELOG.md) for detailed phase progression.

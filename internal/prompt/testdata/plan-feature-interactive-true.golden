@@ -1,0 +1,35 @@
+# Plan Feature Skill
+
+This skill performs research-driven planning for new roadmap features.
+
+## Configuration
+
+- **Model**: claude-sonnet-4.5
+- **Tool**: claude-code
+- **Interactive**: true
+- **Provider**: anthropic
+
+## Capabilities
+
+This skill coordinates multiple phases to create implementation plans:
+1. Research existing codebase and patterns
+2. Synthesize findings into architectural decisions
+3. Generate detailed implementation plans with tasks
+
+## Usage
+
+
+This skill operates in interactive mode using teams for parallel research.
+
+
+## Runner Files
+
+- [research-runner.md](research-runner.md) - Research orchestration
+- [synthesis-runner.md](synthesis-runner.md) - Synthesis orchestration
+- [planning-runner.md](planning-runner.md) - Planning orchestration
+
+## Models
+
+- Fast tier: claude-haiku-4
+- Standard tier: claude-sonnet-4.5
+- Deep tier: claude-opus-4

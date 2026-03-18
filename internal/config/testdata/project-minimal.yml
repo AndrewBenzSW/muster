@@ -1,0 +1,4 @@
+# Minimal project config
+defaults:
+  tool: claude-code
+  provider: anthropic

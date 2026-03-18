@@ -1,14 +1,19 @@
+version: "2"
+
 run:
   timeout: 5m
 
 linters:
   enable:
-    - gofmt
     - govet
     - staticcheck
     - errcheck
     - gosec
     - gocyclo
+
+formatters:
+  enable:
+    - gofmt
 
 issues:
   max-issues-per-linter: 0  # report all issues

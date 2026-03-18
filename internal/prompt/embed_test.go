@@ -14,7 +14,7 @@ func TestPromptFS_PlaceholderExists(t *testing.T) {
 	content, err := fs.ReadFile(Prompts, "prompts/test/example.md.tmpl")
 	require.NoError(t, err)
 	assert.NotEmpty(t, content)
-	assert.Equal(t, "Hello {{.Name}}\n", string(content))
+	assert.Equal(t, "Hello {{.Tool}}\n", string(content))
 }
 
 func TestPromptFS_CanWalk(t *testing.T) {
@@ -34,7 +34,7 @@ func TestPromptFS_CanWalk(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
-	assert.GreaterOrEqual(t, fileCount, 1, "Expected at least one file in embedded FS")
+	assert.GreaterOrEqual(t, fileCount, 14, "Expected at least 14 .tmpl files from Phase 0.5")
 	assert.True(t, foundExpectedFile, "Expected to find at least one .md.tmpl file in embedded FS")
 }
 
@@ -48,7 +48,41 @@ func TestPromptFS_CanParseTemplate(t *testing.T) {
 
 	// Verify template can execute
 	var buf strings.Builder
-	err = tmpl.Execute(&buf, map[string]string{"Name": "World"})
+	err = tmpl.Execute(&buf, map[string]string{"Tool": "World"})
 	require.NoError(t, err)
 	assert.Equal(t, "Hello World\n", buf.String())
+}
+
+func TestPromptFS_ExpectedPathsExist(t *testing.T) {
+	// Verify expected paths from Phase 0.5 are embedded
+	expectedPaths := []string{
+		"prompts/plan-feature/SKILL.md.tmpl",
+		"prompts/execute-plan/SKILL.md.tmpl",
+		"prompts/review-implementation/SKILL.md.tmpl",
+	}
+
+	for _, path := range expectedPaths {
+		content, err := fs.ReadFile(Prompts, path)
+		require.NoError(t, err, "Expected path %s to exist in embedded FS", path)
+		assert.NotEmpty(t, content, "Expected path %s to have content", path)
+	}
+}
+
+func TestPromptFS_ReadDirCount(t *testing.T) {
+	// Verify fs.ReadDir returns expected count
+	// We expect at least 14 .tmpl files from Phase 0.5
+	tmplCount := 0
+
+	err := fs.WalkDir(Prompts, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(path, ".tmpl") {
+			tmplCount++
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, tmplCount, 14, "Expected at least 14 .tmpl files from Phase 0.5")
 }

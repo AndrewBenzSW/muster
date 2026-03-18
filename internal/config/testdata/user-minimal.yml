@@ -1,0 +1,5 @@
+# Minimal valid user config
+defaults:
+  tool: claude-code
+  provider: anthropic
+  model: claude-sonnet-4.5

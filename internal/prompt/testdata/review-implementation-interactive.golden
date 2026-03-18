@@ -1,0 +1,30 @@
+# Review Implementation Skill
+
+This skill performs automated review of roadmap implementation against acceptance criteria.
+
+## Configuration
+
+- **Model**: claude-sonnet-4.5
+- **Tool**: claude-code
+- **Interactive**: true
+- **Provider**: anthropic
+
+## Capabilities
+
+This skill coordinates multiple agents to:
+1. Review implemented code against acceptance criteria
+2. Identify gaps and issues
+3. Propose fixes for identified problems
+4. Verify remediations
+
+## Usage
+
+
+This skill operates in interactive mode using teams for parallel review.
+
+
+## Models
+
+- Fast tier: claude-haiku-4
+- Standard tier: claude-sonnet-4.5
+- Deep tier: claude-opus-4
