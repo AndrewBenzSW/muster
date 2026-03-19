@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -75,10 +76,10 @@ func InvokeAI(cfg InvokeConfig) (*InvokeResult, error) {
 		return nil, fmt.Errorf("failed to write skill file: %w", err)
 	}
 
-	// Use configured timeout, default to 60 seconds if not set
+	// Use configured timeout, default to 120 seconds if not set
 	timeout := cfg.Timeout
 	if timeout == 0 {
-		timeout = 60 * time.Second
+		timeout = 120 * time.Second
 	}
 
 	// Create context with timeout
@@ -88,6 +89,9 @@ func InvokeAI(cfg InvokeConfig) (*InvokeResult, error) {
 	// Build command: tool --print --plugin-dir tmpDir
 	//nolint:gosec // G204: cfg.Tool is from config, tmpDir is internal temp directory
 	cmd := exec.CommandContext(ctx, cfg.Tool, "--print", "--plugin-dir", tmpDir)
+
+	// Pipe prompt content via stdin (claude --print reads the prompt from stdin)
+	cmd.Stdin = strings.NewReader(cfg.Prompt)
 
 	// Capture stdout to buffer
 	var stdout bytes.Buffer

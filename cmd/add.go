@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"github.com/abenz1267/muster/internal/roadmap"
 	"github.com/abenz1267/muster/internal/ui"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 var addCmd = &cobra.Command{
@@ -150,18 +152,22 @@ func runBatchAdd(rm *roadmap.Roadmap, title, priorityStr, statusStr, contextStr 
 
 // runInteractiveAdd handles interactive/AI mode item creation
 func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config.ResolvedConfig, userCfg *config.UserConfig, verbose bool) error {
-	// Check if running in TTY
-	if !ui.IsInteractive() {
+	// Check if both stdout and stdin are connected to a terminal
+	if !ui.IsInteractive() || !term.IsTerminal(int(os.Stdin.Fd())) { //nolint:gosec // G115: Safe conversion for terminal detection
 		return fmt.Errorf("interactive mode requires a terminal (TTY). Use --title flag for batch mode")
 	}
 
-	// Get user input
-	fmt.Fprintf(os.Stderr, "Describe the roadmap item you want to add:\n")
-	userInput, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return fmt.Errorf("failed to read user input: %w", err)
+	// Get user input (single line, submitted on Enter)
+	fmt.Fprintf(os.Stderr, "Describe the roadmap item you want to add: ")
+	scanner := bufio.NewScanner(os.Stdin)
+	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return fmt.Errorf("failed to read user input: %w", err)
+		}
+		return fmt.Errorf("no input provided")
 	}
-	if len(userInput) == 0 {
+	userInput := scanner.Text()
+	if strings.TrimSpace(userInput) == "" {
 		return fmt.Errorf("no input provided")
 	}
 
@@ -175,7 +181,7 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 		".",  // mainRepoPath
 		"",   // planDir
 	)
-	ctx.Extra["UserInput"] = string(userInput)
+	ctx.Extra["UserInput"] = userInput
 
 	// Render template
 	promptContent, err := prompt.RenderTemplate("prompts/add-item/add-item-prompt.md.tmpl", ctx)
@@ -185,12 +191,13 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 
 	if verbose {
 		fmt.Fprintf(os.Stderr, "Template path: prompts/add-item/add-item-prompt.md.tmpl\n")
-		fmt.Fprintf(os.Stderr, "Invocation command: %s --print --plugin-dir <tmpdir>\n", resolved.Tool)
+		fmt.Fprintf(os.Stderr, "Invocation command: %s --print --plugin-dir <tmpdir>\n", config.ToolExecutable(resolved.Tool))
 	}
 
 	// Invoke AI
+	fmt.Fprintf(os.Stderr, "Generating roadmap item with AI...\n")
 	result, err := ai.InvokeAI(ai.InvokeConfig{
-		Tool:    resolved.Tool,
+		Tool:    config.ToolExecutable(resolved.Tool),
 		Prompt:  promptContent,
 		Verbose: verbose,
 	})

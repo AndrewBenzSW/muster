@@ -227,7 +227,7 @@ func performSync(
 
 		// Invoke AI
 		aiResult, err := ai.InvokeAI(ai.InvokeConfig{
-			Tool:    resolved.Tool,
+			Tool:    config.ToolExecutable(resolved.Tool),
 			Prompt:  promptContent,
 			Verbose: verbose,
 		})
