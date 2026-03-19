@@ -75,7 +75,10 @@ using Claude Agent SDK skills.`,
 		// Log resolved triple if verbose (verbose is a persistent flag from root)
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		if verbose {
-			fmt.Fprintf(os.Stderr, "Using: tool=%s provider=%s model=%s\n", resolved.Tool, resolved.Provider, resolved.Model)
+			fmt.Fprintf(os.Stderr, "Using: tool=%s (%s) provider=%s (%s) model=%s (%s)\n",
+				resolved.Tool, resolved.ToolSource,
+				resolved.Provider, resolved.ProviderSource,
+				resolved.Model, resolved.ModelSource)
 		}
 
 		// Task 4.6: Implement process execution
@@ -308,7 +311,10 @@ func runDockerFlow(cmd *cobra.Command, args []string) error {
 	// Get the resolved tool (for logging purposes)
 	resolved, err := cfg.Resolve("interactive")
 	if err == nil && verbose {
-		fmt.Fprintf(os.Stderr, "Using: tool=%s provider=%s model=%s\n", resolved.Tool, resolved.Provider, resolved.Model)
+		fmt.Fprintf(os.Stderr, "Using: tool=%s (%s) provider=%s (%s) model=%s (%s)\n",
+			resolved.Tool, resolved.ToolSource,
+			resolved.Provider, resolved.ProviderSource,
+			resolved.Model, resolved.ModelSource)
 	}
 
 	// Execute the tool in the dev-agent service

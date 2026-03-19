@@ -33,11 +33,18 @@ var (
 	ErrConfigParse = errors.New("config parse error")
 )
 
-// Default configuration constants
+// Default configuration constants.
+// Model values must be valid for the Claude CLI's --model flag, which accepts
+// short aliases (e.g. "sonnet", "haiku") or full IDs (e.g. "claude-sonnet-4-6").
 const (
 	DefaultTool     = "claude-code"
 	DefaultProvider = "anthropic"
-	DefaultModel    = "claude-sonnet-4.5"
+	DefaultModel    = "sonnet"
+
+	// Default model for each tier (used when no user tier config exists)
+	DefaultFastModel     = "haiku"
+	DefaultStandardModel = DefaultModel // sonnet
+	DefaultDeepModel     = "sonnet"
 )
 
 // ToolExecutable returns the actual executable name for a tool config name.
@@ -204,6 +211,11 @@ type ResolvedConfig struct {
 
 	// Model is the resolved model name
 	Model string
+
+	// Sources tracks where each value was resolved from (for verbose/diagnostic output)
+	ToolSource     string
+	ProviderSource string
+	ModelSource    string
 }
 
 // Validate validates the Config and collects all errors.

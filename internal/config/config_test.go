@@ -15,14 +15,9 @@ func TestDefaultUserConfig(t *testing.T) {
 	cfg := DefaultUserConfig()
 
 	require.NotNil(t, cfg)
-	require.NotNil(t, cfg.Defaults)
-	require.NotNil(t, cfg.Defaults.Tool)
-	require.NotNil(t, cfg.Defaults.Provider)
-	require.NotNil(t, cfg.Defaults.Model)
 
-	assert.Equal(t, DefaultTool, *cfg.Defaults.Tool)
-	assert.Equal(t, DefaultProvider, *cfg.Defaults.Provider)
-	assert.Equal(t, DefaultModel, *cfg.Defaults.Model)
+	// Defaults is nil — tool, provider, and model are resolved by ResolveStep
+	assert.Nil(t, cfg.Defaults)
 
 	// Tools and Providers maps should be initialized (not nil)
 	assert.NotNil(t, cfg.Tools)
@@ -31,7 +26,6 @@ func TestDefaultUserConfig(t *testing.T) {
 	assert.Empty(t, cfg.Providers)
 
 	// ModelTiers can be nil (not required)
-	// Just verify it doesn't panic
 	_ = cfg.ModelTiers
 }
 
@@ -284,7 +278,7 @@ func TestConfigConstants(t *testing.T) {
 	// Verify they're reasonable values (not test placeholders)
 	assert.Contains(t, DefaultTool, "claude")
 	assert.Equal(t, "anthropic", DefaultProvider)
-	assert.Contains(t, DefaultModel, "claude")
+	assert.Equal(t, "sonnet", DefaultModel)
 }
 
 func TestToolConfigOptionalFields(t *testing.T) {

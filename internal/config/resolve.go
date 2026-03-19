@@ -4,13 +4,37 @@ import (
 	"fmt"
 )
 
+// stepDefaultTiers maps step names to their default model tier.
+// Steps listed here use a tier-based default instead of DefaultModel
+// when no model is configured anywhere in the resolution chain.
+var stepDefaultTiers = map[string]string{
+	"add":  "muster-fast",
+	"sync": "muster-fast",
+}
+
+// concreteModelForTier returns the hard-coded default model for a tier name.
+// This is used when tier resolution fails (no user config) but the step has
+// a default tier that needs a concrete model name.
+func concreteModelForTier(tier string) string {
+	switch tier {
+	case "muster-fast":
+		return DefaultFastModel
+	case "muster-standard":
+		return DefaultStandardModel
+	case "muster-deep":
+		return DefaultDeepModel
+	default:
+		return DefaultModel
+	}
+}
+
 // ResolveStep resolves configuration for a specific pipeline step.
 // It implements a 5-step fallback chain:
 // 1. Step config (projectCfg.Pipeline[stepName])
 // 2. Project defaults (projectCfg.Defaults)
 // 3. User defaults (userCfg.Defaults)
 // 4. Tool defaults (userCfg.Tools[tool].Defaults after tool is resolved)
-// 5. Hard-coded defaults (constants)
+// 5. Hard-coded defaults (constants), with per-step tier defaults
 //
 // Tool override rule: When a step overrides tool but not model, the model
 // string resolution continues through the fallback chain normally, then tier
@@ -24,6 +48,8 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	}
 
 	var tool, provider, model *string
+	var toolSrc, providerSrc, modelSrc string
+	stepLabel := fmt.Sprintf("pipeline.%s", stepName)
 
 	// Step 1: Step config
 	var stepCfg *PipelineStepConfig
@@ -33,12 +59,15 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	if stepCfg != nil {
 		if stepCfg.Tool != nil {
 			tool = stepCfg.Tool
+			toolSrc = stepLabel
 		}
 		if stepCfg.Provider != nil {
 			provider = stepCfg.Provider
+			providerSrc = stepLabel
 		}
 		if stepCfg.Model != nil {
 			model = stepCfg.Model
+			modelSrc = stepLabel
 		}
 	}
 
@@ -46,12 +75,15 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	if projectCfg.Defaults != nil {
 		if tool == nil && projectCfg.Defaults.Tool != nil {
 			tool = projectCfg.Defaults.Tool
+			toolSrc = "project defaults"
 		}
 		if provider == nil && projectCfg.Defaults.Provider != nil {
 			provider = projectCfg.Defaults.Provider
+			providerSrc = "project defaults"
 		}
 		if model == nil && projectCfg.Defaults.Model != nil {
 			model = projectCfg.Defaults.Model
+			modelSrc = "project defaults"
 		}
 	}
 
@@ -59,12 +91,15 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	if userCfg.Defaults != nil {
 		if tool == nil && userCfg.Defaults.Tool != nil {
 			tool = userCfg.Defaults.Tool
+			toolSrc = "user defaults"
 		}
 		if provider == nil && userCfg.Defaults.Provider != nil {
 			provider = userCfg.Defaults.Provider
+			providerSrc = "user defaults"
 		}
 		if model == nil && userCfg.Defaults.Model != nil {
 			model = userCfg.Defaults.Model
+			modelSrc = "user defaults"
 		}
 	}
 
@@ -73,6 +108,7 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	if tool == nil {
 		defaultTool := DefaultTool
 		tool = &defaultTool
+		toolSrc = "built-in default"
 	}
 
 	// Step 4: Tool defaults (only for model, if not yet resolved)
@@ -83,10 +119,26 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	if provider == nil {
 		defaultProvider := DefaultProvider
 		provider = &defaultProvider
+		providerSrc = "built-in default"
 	}
 	if model == nil {
-		defaultModel := DefaultModel
-		model = &defaultModel
+		if tier, ok := stepDefaultTiers[stepName]; ok {
+			// Step has a default tier — try user's tier config first
+			resolvedTier, err := resolveModelTier(tier, *tool, userCfg)
+			if err == nil {
+				model = &resolvedTier
+				modelSrc = fmt.Sprintf("step default tier (%s) via user config", tier)
+			} else {
+				// No user tier config — use built-in default for this tier
+				defaultModel := concreteModelForTier(tier)
+				model = &defaultModel
+				modelSrc = fmt.Sprintf("step default tier (%s)", tier)
+			}
+		} else {
+			defaultModel := DefaultModel
+			model = &defaultModel
+			modelSrc = "built-in default"
+		}
 	}
 
 	// Now resolve the model string (handle tier resolution)
@@ -96,9 +148,12 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	}
 
 	return &ResolvedConfig{
-		Tool:     *tool,
-		Provider: *provider,
-		Model:    resolvedModel,
+		Tool:           *tool,
+		Provider:       *provider,
+		Model:          resolvedModel,
+		ToolSource:     toolSrc,
+		ProviderSource: providerSrc,
+		ModelSource:    modelSrc,
 	}, nil
 }
 

@@ -350,6 +350,100 @@ func TestResolveStep(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:       "add step defaults to fast tier model",
+			stepName:   "add",
+			projectCfg: &ProjectConfig{},
+			userCfg:    &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    DefaultFastModel,
+			},
+			expectError: false,
+		},
+		{
+			name:       "sync step defaults to fast tier model",
+			stepName:   "sync",
+			projectCfg: &ProjectConfig{},
+			userCfg:    &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    DefaultFastModel,
+			},
+			expectError: false,
+		},
+		{
+			name:     "add step uses user fast tier when configured",
+			stepName: "add",
+			projectCfg: &ProjectConfig{},
+			userCfg: &UserConfig{
+				Tools: map[string]*ToolConfig{
+					"claude-code": {
+						ModelTiers: &struct {
+							Fast     *string `yaml:"fast"`
+							Standard *string `yaml:"standard"`
+							Deep     *string `yaml:"deep"`
+						}{
+							Fast: strPtr("custom-fast-model"),
+						},
+					},
+				},
+			},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    "custom-fast-model",
+			},
+			expectError: false,
+		},
+		{
+			name:     "add step explicit model overrides fast default",
+			stepName: "add",
+			projectCfg: &ProjectConfig{
+				Pipeline: map[string]*PipelineStepConfig{
+					"add": {
+						Model: strPtr("explicit-model"),
+					},
+				},
+			},
+			userCfg: &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    "explicit-model",
+			},
+			expectError: false,
+		},
+		{
+			name:     "add step project default model overrides fast default",
+			stepName: "add",
+			projectCfg: &ProjectConfig{
+				Defaults: &DefaultsConfig{
+					Model: strPtr("project-model"),
+				},
+			},
+			userCfg: &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    "project-model",
+			},
+			expectError: false,
+		},
+		{
+			name:       "code step still uses standard default",
+			stepName:   "code",
+			projectCfg: &ProjectConfig{},
+			userCfg:    &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    DefaultModel,
+			},
+			expectError: false,
+		},
+		{
 			name:     "mixed fallback chain",
 			stepName: "code",
 			projectCfg: &ProjectConfig{

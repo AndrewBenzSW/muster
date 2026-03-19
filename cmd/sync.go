@@ -78,7 +78,10 @@ By default, syncs from .roadmap.json to .muster/roadmap.json`,
 
 		// Verbose logging
 		if verbose {
-			fmt.Fprintf(os.Stderr, "Using: tool=%s provider=%s model=%s\n", resolved.Tool, resolved.Provider, resolved.Model)
+			fmt.Fprintf(os.Stderr, "Using: tool=%s (%s) provider=%s (%s) model=%s (%s)\n",
+				resolved.Tool, resolved.ToolSource,
+				resolved.Provider, resolved.ProviderSource,
+				resolved.Model, resolved.ModelSource)
 			fmt.Fprintf(os.Stderr, "Source: %s\n", sourcePath)
 			fmt.Fprintf(os.Stderr, "Target: %s\n", targetPath)
 		}
@@ -228,6 +231,7 @@ func performSync(
 		// Invoke AI
 		aiResult, err := ai.InvokeAI(ai.InvokeConfig{
 			Tool:    config.ToolExecutable(resolved.Tool),
+			Model:   resolved.Model,
 			Prompt:  promptContent,
 			Verbose: verbose,
 		})
@@ -240,7 +244,8 @@ func performSync(
 		} else {
 			// Parse AI response
 			var matches []MatchResult
-			if err := json.Unmarshal([]byte(aiResult.RawOutput), &matches); err != nil {
+			jsonStr := ai.ExtractJSON(aiResult.RawOutput)
+			if err := json.Unmarshal([]byte(jsonStr), &matches); err != nil {
 				if verbose {
 					fmt.Fprintf(os.Stderr, "Warning: failed to parse AI response: %v\n", err)
 					fmt.Fprintf(os.Stderr, "Continuing with exact matches only...\n")

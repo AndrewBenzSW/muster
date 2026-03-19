@@ -57,38 +57,15 @@ func LoadUserConfig(path string) (*UserConfig, error) {
 		return nil, fmt.Errorf("failed to parse config file %s: %w: %w", path, ErrConfigParse, err)
 	}
 
-	// Fill in defaults if not provided
-	if config.Defaults == nil {
-		config.Defaults = &DefaultsConfig{}
-	}
-	if config.Defaults.Tool == nil {
-		tool := DefaultTool
-		config.Defaults.Tool = &tool
-	}
-	if config.Defaults.Provider == nil {
-		provider := DefaultProvider
-		config.Defaults.Provider = &provider
-	}
-	if config.Defaults.Model == nil {
-		model := DefaultModel
-		config.Defaults.Model = &model
-	}
-
 	return &config, nil
 }
 
-// DefaultUserConfig returns a UserConfig with sensible defaults
+// DefaultUserConfig returns a UserConfig with sensible defaults.
+// Tool and provider defaults are set here; model is intentionally left nil
+// so that ResolveStep can apply per-step tier defaults before falling back
+// to the hard-coded DefaultModel.
 func DefaultUserConfig() *UserConfig {
-	tool := DefaultTool
-	provider := DefaultProvider
-	model := DefaultModel
-
 	return &UserConfig{
-		Defaults: &DefaultsConfig{
-			Tool:     &tool,
-			Provider: &provider,
-			Model:    &model,
-		},
 		Tools:      make(map[string]*ToolConfig),
 		Providers:  make(map[string]*ProviderConfig),
 		ModelTiers: nil,

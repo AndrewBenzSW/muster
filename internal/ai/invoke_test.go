@@ -46,6 +46,7 @@ import (
 func main() {
 	printFlag := flag.Bool("print", false, "print JSON output")
 	pluginDirFlag := flag.String("plugin-dir", "", "plugin directory")
+	modelFlag := flag.String("model", "", "model to use")
 	exitCodeFlag := flag.Int("exit-code", 0, "exit code to return")
 	flag.Parse()
 
@@ -66,10 +67,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Echo JSON output with the skill content
+	// Echo JSON output with the skill content and model
 	output := map[string]interface{}{
 		"success": true,
 		"content": string(content),
+		"model":   *modelFlag,
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
@@ -231,6 +233,43 @@ func TestInvokeAI_EmptyPrompt(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "prompt cannot be empty")
+}
+
+func TestInvokeAI_ModelPassthrough(t *testing.T) {
+	cfg := InvokeConfig{
+		Tool:    mockToolPath,
+		Model:   "claude-haiku-4.5",
+		Prompt:  "Test prompt",
+		Verbose: false,
+	}
+
+	result, err := InvokeAI(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Verify the model was passed through to the tool
+	var jsonOutput map[string]interface{}
+	err = json.Unmarshal([]byte(result.RawOutput), &jsonOutput)
+	require.NoError(t, err)
+	assert.Equal(t, "claude-haiku-4.5", jsonOutput["model"])
+}
+
+func TestInvokeAI_NoModel(t *testing.T) {
+	cfg := InvokeConfig{
+		Tool:    mockToolPath,
+		Prompt:  "Test prompt",
+		Verbose: false,
+	}
+
+	result, err := InvokeAI(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// When no model is set, the tool receives an empty model flag
+	var jsonOutput map[string]interface{}
+	err = json.Unmarshal([]byte(result.RawOutput), &jsonOutput)
+	require.NoError(t, err)
+	assert.Equal(t, "", jsonOutput["model"])
 }
 
 func TestInvokeAI_Verbose(t *testing.T) {
@@ -427,4 +466,49 @@ exit 0
 	// Verify temp directory cleanup occurs (defer in helper handles this)
 	// If cleanup failed, we'd see a warning in stderr, but the test would still pass
 	// This verifies the defer cleanup logic works even after timeout
+}
+
+func TestExtractJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "plain JSON passthrough",
+			input:    `{"key": "value"}`,
+			expected: `{"key": "value"}`,
+		},
+		{
+			name:     "json code fence",
+			input:    "```json\n{\"key\": \"value\"}\n```",
+			expected: `{"key": "value"}`,
+		},
+		{
+			name:     "bare code fence",
+			input:    "```\n{\"key\": \"value\"}\n```",
+			expected: `{"key": "value"}`,
+		},
+		{
+			name:     "code fence with surrounding whitespace",
+			input:    "  ```json\n{\"key\": \"value\"}\n```  ",
+			expected: `{"key": "value"}`,
+		},
+		{
+			name:     "array in code fence",
+			input:    "```json\n[{\"a\": 1}]\n```",
+			expected: `[{"a": 1}]`,
+		},
+		{
+			name:     "no fences returns as-is",
+			input:    "not json at all",
+			expected: "not json at all",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, ExtractJSON(tt.input))
+		})
+	}
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -15,6 +16,7 @@ import (
 // InvokeConfig holds configuration for AI tool invocation.
 type InvokeConfig struct {
 	Tool    string        // path or name of the AI tool executable
+	Model   string        // model to use (passed as --model flag; empty means tool default)
 	Prompt  string        // prompt content to stage as a skill file
 	Verbose bool          // if true, print command and config to stderr
 	Timeout time.Duration // timeout for tool execution (default: 60 seconds if not set)
@@ -86,9 +88,13 @@ func InvokeAI(cfg InvokeConfig) (*InvokeResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Build command: tool --print --plugin-dir tmpDir
+	// Build command: tool --print --plugin-dir tmpDir [--model model]
+	args := []string{"--print", "--plugin-dir", tmpDir}
+	if cfg.Model != "" {
+		args = append(args, "--model", cfg.Model)
+	}
 	//nolint:gosec // G204: cfg.Tool is from config, tmpDir is internal temp directory
-	cmd := exec.CommandContext(ctx, cfg.Tool, "--print", "--plugin-dir", tmpDir)
+	cmd := exec.CommandContext(ctx, cfg.Tool, args...)
 
 	// Pipe prompt content via stdin (claude --print reads the prompt from stdin)
 	cmd.Stdin = strings.NewReader(cfg.Prompt)
@@ -131,4 +137,18 @@ func InvokeAI(cfg InvokeConfig) (*InvokeResult, error) {
 	return &InvokeResult{
 		RawOutput: stdout.String(),
 	}, nil
+}
+
+// codeBlockRe matches markdown fenced code blocks (```json ... ``` or ``` ... ```).
+var codeBlockRe = regexp.MustCompile("(?s)^\\s*```(?:json)?\\s*\n(.*?)\\s*```\\s*$")
+
+// ExtractJSON strips markdown code fences from AI output if present,
+// returning the inner content. If no fences are found, returns the
+// input unchanged. This handles the common case where models wrap
+// JSON output in ```json ... ``` despite being told not to.
+func ExtractJSON(raw string) string {
+	if m := codeBlockRe.FindStringSubmatch(raw); len(m) == 2 {
+		return m[1]
+	}
+	return raw
 }

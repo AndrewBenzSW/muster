@@ -63,7 +63,10 @@ Interactive/AI mode (when --title is not provided):
 
 		// Verbose logging
 		if verbose {
-			fmt.Fprintf(os.Stderr, "Using: tool=%s provider=%s model=%s\n", resolved.Tool, resolved.Provider, resolved.Model)
+			fmt.Fprintf(os.Stderr, "Using: tool=%s (%s) provider=%s (%s) model=%s (%s)\n",
+				resolved.Tool, resolved.ToolSource,
+				resolved.Provider, resolved.ProviderSource,
+				resolved.Model, resolved.ModelSource)
 		}
 
 		// Load existing roadmap
@@ -198,6 +201,7 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 	fmt.Fprintf(os.Stderr, "Generating roadmap item with AI...\n")
 	result, err := ai.InvokeAI(ai.InvokeConfig{
 		Tool:    config.ToolExecutable(resolved.Tool),
+		Model:   resolved.Model,
 		Prompt:  promptContent,
 		Verbose: verbose,
 	})
@@ -205,9 +209,10 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 		return fmt.Errorf("AI invocation failed: %w", err)
 	}
 
-	// Parse JSON response
+	// Parse JSON response (strip code fences if present)
 	var item roadmap.RoadmapItem
-	if err := json.Unmarshal([]byte(result.RawOutput), &item); err != nil {
+	jsonStr := ai.ExtractJSON(result.RawOutput)
+	if err := json.Unmarshal([]byte(jsonStr), &item); err != nil {
 		return fmt.Errorf("failed to parse AI response as JSON: %w\nRaw response: %s", err, result.RawOutput)
 	}
 

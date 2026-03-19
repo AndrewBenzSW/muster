@@ -87,13 +87,8 @@ func TestLoadUserConfig(t *testing.T) {
 			validate: func(t *testing.T, cfg *UserConfig) {
 				// Empty file should return default config
 				assert.NotNil(t, cfg)
-				require.NotNil(t, cfg.Defaults)
-				assert.NotNil(t, cfg.Defaults.Tool)
-				assert.Equal(t, DefaultTool, *cfg.Defaults.Tool)
-				assert.NotNil(t, cfg.Defaults.Provider)
-				assert.Equal(t, DefaultProvider, *cfg.Defaults.Provider)
-				assert.NotNil(t, cfg.Defaults.Model)
-				assert.Equal(t, DefaultModel, *cfg.Defaults.Model)
+				// Defaults is nil — ResolveStep handles defaults
+				assert.Nil(t, cfg.Defaults)
 			},
 		},
 		{
@@ -103,13 +98,8 @@ func TestLoadUserConfig(t *testing.T) {
 			validate: func(t *testing.T, cfg *UserConfig) {
 				// Missing file should return default config (not an error)
 				assert.NotNil(t, cfg)
-				require.NotNil(t, cfg.Defaults)
-				assert.NotNil(t, cfg.Defaults.Tool)
-				assert.Equal(t, DefaultTool, *cfg.Defaults.Tool)
-				assert.NotNil(t, cfg.Defaults.Provider)
-				assert.Equal(t, DefaultProvider, *cfg.Defaults.Provider)
-				assert.NotNil(t, cfg.Defaults.Model)
-				assert.Equal(t, DefaultModel, *cfg.Defaults.Model)
+				// Defaults is nil — ResolveStep handles defaults
+				assert.Nil(t, cfg.Defaults)
 			},
 		},
 		{
@@ -215,7 +205,7 @@ func TestLoadUserConfig_PointerFieldUnmarshal(t *testing.T) {
 	assert.NotNil(t, cfg.Defaults.Tool)
 	assert.NotNil(t, cfg.Defaults.Provider)
 	assert.NotNil(t, cfg.Defaults.Model)
-	assert.Equal(t, DefaultModel, *cfg.Defaults.Model)
+	assert.Equal(t, "claude-sonnet-4.5", *cfg.Defaults.Model) // from fixture file
 
 	// When fields are not present in config, they should be nil or empty
 	assert.Nil(t, cfg.ModelTiers)

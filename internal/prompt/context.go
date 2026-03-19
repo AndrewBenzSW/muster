@@ -111,5 +111,16 @@ func NewPromptContext(
 		ctx.Models.Deep = *userCfg.ModelTiers.Deep
 	}
 
+	// Fall back to hard-coded defaults if still empty
+	if ctx.Models.Fast == "" {
+		ctx.Models.Fast = config.DefaultFastModel
+	}
+	if ctx.Models.Standard == "" {
+		ctx.Models.Standard = config.DefaultStandardModel
+	}
+	if ctx.Models.Deep == "" {
+		ctx.Models.Deep = config.DefaultDeepModel
+	}
+
 	return ctx
 }
