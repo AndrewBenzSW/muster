@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -166,7 +167,7 @@ func TestLoadRoadmap_MalformedNew_DoesNotFallback(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, roadmap)
 	assert.Contains(t, err.Error(), "failed to load roadmap from")
-	assert.Contains(t, err.Error(), ".muster/roadmap.json")
+	assert.Contains(t, err.Error(), filepath.Join(".muster", "roadmap.json"))
 	// Verify error includes underlying JSON parse error details
 	assert.Contains(t, err.Error(), "invalid character")
 }
@@ -207,7 +208,7 @@ func TestLoadRoadmap_BothMalformed_ReturnsNewFileError(t *testing.T) {
 	assert.Nil(t, roadmap)
 	// Should report error from new file location
 	assert.Contains(t, err.Error(), "failed to load roadmap from")
-	assert.Contains(t, err.Error(), ".muster/roadmap.json")
+	assert.Contains(t, err.Error(), filepath.Join(".muster", "roadmap.json"))
 	// Should include JSON parse error
 	assert.Contains(t, err.Error(), "invalid character")
 }
@@ -306,6 +307,10 @@ func TestSaveRoadmap_WritesWrapperFormat(t *testing.T) {
 }
 
 func TestSaveRoadmap_FilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permission bits are not reliable on Windows")
+	}
+
 	dir := t.TempDir()
 
 	// Create a roadmap

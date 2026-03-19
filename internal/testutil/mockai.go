@@ -33,6 +33,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -271,7 +272,11 @@ func main() {
 		}
 
 		// Compile binary
-		binaryPath := filepath.Join(tmpDir, "mock-ai-tool")
+		binaryName := "mock-ai-tool"
+		if runtime.GOOS == "windows" {
+			binaryName += ".exe"
+		}
+		binaryPath := filepath.Join(tmpDir, binaryName)
 		//nolint:gosec // G204: Compiling known mock tool source
 		cmd := exec.Command("go", "build", "-o", binaryPath, sourcePath)
 		if output, err := cmd.CombinedOutput(); err != nil {

@@ -4,16 +4,27 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
+
+// skipIfWindowsDocker skips the test on Windows where Linux container images
+// (alpine:latest) are unavailable.
+func skipIfWindowsDocker(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping Docker integration test on Windows (Linux images unavailable)")
+	}
+}
 
 // TestPing_Integration verifies Docker daemon reachability.
 func TestPing_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test requiring Docker")
 	}
+	skipIfWindowsDocker(t)
 
 	client, err := NewClient()
 	if err != nil {
@@ -33,6 +44,7 @@ func TestComposeUp_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test requiring Docker")
 	}
+	skipIfWindowsDocker(t)
 
 	// Create minimal compose file with labels
 	tmpDir := t.TempDir()
@@ -104,6 +116,7 @@ func TestListContainers_ProjectFilter(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test requiring Docker")
 	}
+	skipIfWindowsDocker(t)
 
 	// Create two compose files for different projects
 	tmpDir := t.TempDir()
@@ -192,6 +205,7 @@ func TestListContainers_SlugFilter(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test requiring Docker")
 	}
+	skipIfWindowsDocker(t)
 
 	// Create compose file with one service that has a slug, one without
 	tmpDir := t.TempDir()
@@ -271,6 +285,7 @@ func TestComposeExec_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test requiring Docker")
 	}
+	skipIfWindowsDocker(t)
 
 	// Create minimal compose file
 	tmpDir := t.TempDir()
@@ -328,6 +343,7 @@ func TestComposeDown_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test requiring Docker")
 	}
+	skipIfWindowsDocker(t)
 
 	// Create minimal compose file
 	tmpDir := t.TempDir()
@@ -397,6 +413,7 @@ func TestComposeLifecycle_FullIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test requiring Docker")
 	}
+	skipIfWindowsDocker(t)
 
 	// Create compose file with multiple services
 	tmpDir := t.TempDir()

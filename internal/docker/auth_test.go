@@ -3,10 +3,20 @@ package docker
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/abenz1267/muster/internal/config"
 )
+
+// setTestHome sets the home directory for tests, handling both Unix and Windows.
+func setTestHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("HOME", dir)
+	if runtime.GOOS == "windows" {
+		t.Setenv("USERPROFILE", dir)
+	}
+}
 
 func TestDetectBedrockAuth(t *testing.T) {
 	tests := []struct {
@@ -78,7 +88,7 @@ func TestDetectBedrockAuth(t *testing.T) {
 			for k, v := range tt.setupEnv {
 				t.Setenv(k, v)
 			}
-			t.Setenv("HOME", tempDir)
+			setTestHome(t, tempDir)
 
 			// Setup files
 			for path, content := range tt.setupFiles {
@@ -139,7 +149,7 @@ func TestDetectMaxAuth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create temp directory for test
 			tempDir := t.TempDir()
-			t.Setenv("HOME", tempDir)
+			setTestHome(t, tempDir)
 
 			// Setup files
 			for path, content := range tt.setupFiles {
