@@ -3,6 +3,7 @@ package docker
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -112,7 +113,7 @@ func GenerateAllowlist(assetDir string, auth *AuthRequirements, devAgentRaw inte
 	}
 
 	// Write merged allowlist
-	allowlistPath := fmt.Sprintf("%s/allowed-domains.txt", assetDir)
+	allowlistPath := filepath.Join(assetDir, "allowed-domains.txt")
 	content := "# Merged domain allowlist for muster proxy\n"
 	content += "# Generated at runtime - do not edit manually\n\n"
 	content += strings.Join(validDomains, "\n") + "\n"

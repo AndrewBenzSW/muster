@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -251,6 +252,10 @@ func TestUserConfigDir_PlatformPaths(t *testing.T) {
 // TestLoadUserConfig_PermissionDenied tests that LoadUserConfig returns an
 // actionable error when a config file exists but isn't readable due to permissions.
 func TestLoadUserConfig_PermissionDenied(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("os.Chmod(0000) does not deny reads on Windows")
+	}
+
 	// Create a temp directory with a config file
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yml")

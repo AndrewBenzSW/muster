@@ -2,6 +2,8 @@ package main
 
 import (
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -9,14 +11,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func testBinaryPath(t *testing.T, name string) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), name)
+	if runtime.GOOS == "windows" {
+		p += ".exe"
+	}
+	return p
+}
+
 func TestMain_SuccessExitCode(t *testing.T) {
-	// Build the binary
-	buildCmd := exec.Command("go", "build", "-o", "/tmp/muster-test", ".")
+	binPath := testBinaryPath(t, "muster-test")
+	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
 	err := buildCmd.Run()
 	require.NoError(t, err, "building binary should succeed")
 
-	// Run the binary with help flag (should succeed)
-	cmd := exec.Command("/tmp/muster-test", "--help")
+	cmd := exec.Command(binPath, "--help")
 	output, err := cmd.CombinedOutput()
 	assert.NoError(t, err, "command should exit with code 0")
 
@@ -27,13 +37,12 @@ func TestMain_SuccessExitCode(t *testing.T) {
 }
 
 func TestMain_SuccessExitCode_Version(t *testing.T) {
-	// Build the binary
-	buildCmd := exec.Command("go", "build", "-o", "/tmp/muster-test-version", ".")
+	binPath := testBinaryPath(t, "muster-test-version")
+	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
 	err := buildCmd.Run()
 	require.NoError(t, err, "building binary should succeed")
 
-	// Run the binary with version command (should succeed)
-	cmd := exec.Command("/tmp/muster-test-version", "version")
+	cmd := exec.Command(binPath, "version")
 	output, err := cmd.CombinedOutput()
 	assert.NoError(t, err, "version command should exit with code 0")
 
@@ -44,13 +53,12 @@ func TestMain_SuccessExitCode_Version(t *testing.T) {
 }
 
 func TestMain_ErrorExitCode_InvalidCommand(t *testing.T) {
-	// Build the binary
-	buildCmd := exec.Command("go", "build", "-o", "/tmp/muster-test-error", ".")
+	binPath := testBinaryPath(t, "muster-test-error")
+	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
 	err := buildCmd.Run()
 	require.NoError(t, err, "building binary should succeed")
 
-	// Run the binary with invalid command (should fail)
-	cmd := exec.Command("/tmp/muster-test-error", "nonexistent-command")
+	cmd := exec.Command(binPath, "nonexistent-command")
 	output, err := cmd.CombinedOutput()
 
 	// Command should exit with non-zero code
