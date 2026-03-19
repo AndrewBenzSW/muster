@@ -7,14 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-19
+
 ### Added
 
-- **Mock Agent Tool**: A reusable `internal/testutil/mockagent` binary that implements the AI tool interface (`--print`, `--plugin-dir` flags), configurable via `--exit-code`, `--output`, and `--sleep` flags for test scenario control
-- **`testutil.BuildMockAgent(t)`**: Test helper that compiles and returns the mock agent binary path, enabling any test package to verify AI invocation behavior without calling real AI services
+- **Mock AI Tool Infrastructure**: Centralized testing mock in `internal/testutil/` with dual implementation strategy — in-process function variable replacement for fast unit tests and pre-compiled binary for integration tests validating full subprocess contract
+- **`testutil.MockInvokeAI(response, error)`**: In-process mock that replaces `ai.InvokeAI` with configurable behavior, returns cleanup function for automatic restoration
+- **`testutil.MockInvokeAIWithQueue(responses...)`**: Stateful mock supporting sequential responses for testing workflows with multiple AI invocations
+- **`testutil.NewMockAITool(t, response)`**: Pre-compiled binary mock implementing full tool contract (--print, --plugin-dir, --model flags, skills/SKILL.md reading) with zero test-time compilation overhead via sync.Once initialization
+- **Mock Tool Configuration**: Chainable methods `WithError(code, stderr)` and `WithDelay(duration)` for simulating AI failures, timeouts, and latency without actual delays
+- **Test Fixtures**: Common response data in `internal/testutil/fixtures.go` including ValidRoadmapItemJSON, HighConfidenceMatch, InvalidJSON, and error messages to eliminate duplication across test files
+- **Expanded Sync Test Coverage**: Five new fuzzy matching tests covering low confidence prompts, AI failure fallback, timeout handling, multiple matches, and invalid slug rejection
 
 ### Changed
 
-- Consolidated three separate inline mock tool implementations (in `internal/ai/invoke_test.go`, `cmd/add_test.go`, `cmd/sync_test.go`) into a single shared `BuildMockAgent` helper, eliminating duplicated Go-source-as-string compilation patterns
+- **AI Invocation Function**: Exported `ai.InvokeAI` as reassignable package variable (backed by private `invokeAI` function) to enable test replacement while preserving all existing calling code
+- **Test Infrastructure Consolidation**: Removed three duplicate mock implementations (TestMain from `internal/ai/invoke_test.go`, `createMockAITool` from `cmd/add_test.go`, `createSyncMockAITool` from `cmd/sync_test.go`) in favor of centralized `testutil` helpers
+- **Test Execution Performance**: Eliminated 500ms-1s per-test-file compilation overhead by pre-compiling mock binary once per test run
+- **Code Command Tests**: Enabled four previously skipped tests verifying tool-not-found errors, --no-plugin behavior, --keep-staged directory preservation, and --tool flag overrides
 
 ## [0.3.0] - 2026-03-18
 

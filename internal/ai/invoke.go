@@ -28,7 +28,12 @@ type InvokeResult struct {
 	RawOutput string // captured stdout from the tool
 }
 
-// InvokeAI invokes an AI tool with a single-shot skill file staged in a temp directory.
+// InvokeAI is a package-level variable that holds the AI invocation function.
+// It is exposed as a variable (rather than a direct function) to allow tests
+// to replace it with a mock implementation for testing purposes.
+var InvokeAI = invokeAI
+
+// invokeAI invokes an AI tool with a single-shot skill file staged in a temp directory.
 // The function stages the prompt as a SKILL.md file, executes the tool with --print and
 // --plugin-dir flags to get non-interactive JSON output, and captures the result.
 //
@@ -45,7 +50,7 @@ type InvokeResult struct {
 //   - timeout after configured duration (default: 60 seconds)
 //
 // If Verbose is true, prints the tool command and resolved config to stderr.
-func InvokeAI(cfg InvokeConfig) (*InvokeResult, error) {
+func invokeAI(cfg InvokeConfig) (*InvokeResult, error) {
 	// Validate config
 	if cfg.Tool == "" {
 		return nil, errors.New("tool cannot be empty")

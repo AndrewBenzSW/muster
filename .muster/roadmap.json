@@ -1,6 +1,13 @@
 {
   "items": [
     {
+      "slug": "mock-agent-tool",
+      "title": "Mock Agent Tool",
+      "priority": "high",
+      "status": "planned",
+      "context": "Build a simple mock AI agent coding tool that can be used by implementing agents to verify behavior. This is a high priority so we can use it in future work."
+    },
+    {
       "slug": "post-pr-lifecycle",
       "title": "Phase 4: muster out and git operations",
       "priority": "medium",

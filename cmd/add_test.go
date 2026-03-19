@@ -1,14 +1,13 @@
 package cmd
 
 import (
-	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/abenz1267/muster/internal/roadmap"
+	"github.com/abenz1267/muster/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -305,35 +304,6 @@ defaults:
 	assert.Contains(t, err.Error(), "config")
 }
 
-// Helper function to create a mock AI tool that returns valid JSON
-func createMockAITool(t *testing.T, jsonResponse string) string {
-	tmpDir := t.TempDir()
-	mockToolPath := filepath.Join(tmpDir, "mock-ai-tool")
-
-	mockToolSource := `package main
-import ("flag";"fmt";"os";"path/filepath")
-func main() {
-	printFlag := flag.Bool("print", false, "print JSON output")
-	pluginDirFlag := flag.String("plugin-dir", "", "plugin directory")
-	flag.Parse()
-	if !*printFlag || *pluginDirFlag == "" { fmt.Fprintf(os.Stderr, "Usage: mock-ai-tool --print --plugin-dir <dir>\n"); os.Exit(1) }
-	skillPath := filepath.Join(*pluginDirFlag, "skills", "SKILL.md")
-	_, err := os.ReadFile(skillPath)
-	if err != nil { fmt.Fprintf(os.Stderr, "Error reading skill file: %v\n", err); os.Exit(1) }
-	fmt.Print(` + "`" + jsonResponse + "`" + `)
-}`
-
-	mockToolSourcePath := filepath.Join(tmpDir, "mock-ai-tool.go")
-	//nolint:gosec // G306: Test file permissions
-	err := os.WriteFile(mockToolSourcePath, []byte(mockToolSource), 0644)
-	require.NoError(t, err)
-	//nolint:gosec // G204: Test code compiling mock tool
-	cmd := exec.Command("go", "build", "-o", mockToolPath, mockToolSourcePath)
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "Failed to compile mock tool: %s", string(output))
-	return mockToolPath
-}
-
 func TestAddCommand_InteractiveMode_AISuccess(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()
@@ -346,16 +316,12 @@ func TestAddCommand_InteractiveMode_AISuccess(t *testing.T) {
 	err = roadmap.SaveRoadmap(tmpDir, rm)
 	require.NoError(t, err)
 
-	validItem := roadmap.RoadmapItem{Slug: "ai-generated-feature", Title: "AI Generated Feature", Priority: roadmap.PriorityHigh, Status: roadmap.StatusPlanned, Context: "AI generated context"}
-	jsonBytes, err := json.Marshal(validItem)
-	require.NoError(t, err)
-
-	mockToolPath := createMockAITool(t, string(jsonBytes))
+	mockTool := testutil.NewMockAITool(t, testutil.ValidRoadmapItemJSON)
 	musterDir := filepath.Join(tmpDir, ".muster")
 	//nolint:gosec // G301: Test directory permissions
 	err = os.MkdirAll(musterDir, 0755)
 	require.NoError(t, err)
-	configContent := "defaults:\n  tool: " + mockToolPath + "\n  provider: mock\n  model: mock-model\n"
+	configContent := "defaults:\n  tool: " + mockTool.Path() + "\n  provider: mock\n  model: mock-model\n"
 	//nolint:gosec // G306: Test file permissions
 	err = os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(configContent), 0644)
 	require.NoError(t, err)
@@ -374,13 +340,12 @@ func TestAddCommand_InteractiveMode_InvalidJSON(t *testing.T) {
 	err = roadmap.SaveRoadmap(tmpDir, rm)
 	require.NoError(t, err)
 
-	invalidJSON := "{invalid json content"
-	mockToolPath := createMockAITool(t, invalidJSON)
+	mockTool := testutil.NewMockAITool(t, testutil.InvalidJSON)
 	musterDir := filepath.Join(tmpDir, ".muster")
 	//nolint:gosec // G301: Test directory permissions
 	err = os.MkdirAll(musterDir, 0755)
 	require.NoError(t, err)
-	configContent := "defaults:\n  tool: " + mockToolPath + "\n  provider: mock\n  model: mock-model\n"
+	configContent := "defaults:\n  tool: " + mockTool.Path() + "\n  provider: mock\n  model: mock-model\n"
 	//nolint:gosec // G306: Test file permissions
 	err = os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(configContent), 0644)
 	require.NoError(t, err)

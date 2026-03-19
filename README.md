@@ -141,7 +141,6 @@ See [docs/design.md](docs/design.md) for the full design document and [CHANGELOG
 ## Future Roadmap
 
 ### High Priority
-- **Mock Agent Tool** - Mock AI agent coding tool for verifying agent behavior in tests
 
 ### Medium Priority
 - **Phase 4: muster out and git operations** - Post-PR lifecycle management and git operations

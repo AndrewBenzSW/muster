@@ -350,8 +350,8 @@ func TestResolveStep(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:     "add step uses user fast tier when configured",
-			stepName: "add",
+			name:       "add step uses user fast tier when configured",
+			stepName:   "add",
 			projectCfg: &ProjectConfig{},
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
