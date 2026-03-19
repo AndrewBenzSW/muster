@@ -66,6 +66,30 @@ type DefaultsConfig struct {
 	Model    *string `yaml:"model"`
 }
 
+// ModelTiersConfig defines tier-to-model mappings (fast/standard/deep).
+// Used at user, project, and per-tool levels.
+type ModelTiersConfig struct {
+	Fast     *string `yaml:"fast"`
+	Standard *string `yaml:"standard"`
+	Deep     *string `yaml:"deep"`
+}
+
+// Resolve returns the concrete model name for a tier, or nil if not configured.
+func (t *ModelTiersConfig) Resolve(tierName string) *string {
+	if t == nil {
+		return nil
+	}
+	switch tierName {
+	case "fast":
+		return t.Fast
+	case "standard":
+		return t.Standard
+	case "deep":
+		return t.Deep
+	}
+	return nil
+}
+
 // UserConfig represents user-level configuration from ~/.config/muster/config.yml
 type UserConfig struct {
 	// Defaults specify the default tool, provider, and model
@@ -78,11 +102,7 @@ type UserConfig struct {
 	Providers map[string]*ProviderConfig `yaml:"providers"`
 
 	// ModelTiers defines tier-to-model mappings at the user level
-	ModelTiers *struct {
-		Fast     *string `yaml:"fast"`
-		Standard *string `yaml:"standard"`
-		Deep     *string `yaml:"deep"`
-	} `yaml:"model_tiers"`
+	ModelTiers *ModelTiersConfig `yaml:"model_tiers"`
 }
 
 // ProjectConfig represents project-level configuration from .muster/config.yml
@@ -93,6 +113,15 @@ type ProjectConfig struct {
 	// Pipeline maps pipeline step names to their configurations
 	Pipeline map[string]*PipelineStepConfig `yaml:"pipeline"`
 
+	// Tools maps tool names to their configurations (overrides user-level tools)
+	Tools map[string]*ToolConfig `yaml:"tools"`
+
+	// Providers maps provider names to their configurations (overrides user-level providers)
+	Providers map[string]*ProviderConfig `yaml:"providers"`
+
+	// ModelTiers defines tier-to-model mappings at the project level (overrides user-level tiers)
+	ModelTiers *ModelTiersConfig `yaml:"model_tiers"`
+
 	// LocalOverrides contains local development overrides
 	LocalOverrides map[string]interface{} `yaml:"local_overrides"`
 }
@@ -100,11 +129,7 @@ type ProjectConfig struct {
 // ToolConfig represents configuration for a specific tool
 type ToolConfig struct {
 	// ModelTiers defines tier-to-model mappings for this tool
-	ModelTiers *struct {
-		Fast     *string `yaml:"fast"`
-		Standard *string `yaml:"standard"`
-		Deep     *string `yaml:"deep"`
-	} `yaml:"model_tiers"`
+	ModelTiers *ModelTiersConfig `yaml:"model_tiers"`
 
 	// MaxTokens is the maximum number of tokens for requests
 	MaxTokens *int `yaml:"max_tokens"`
@@ -216,6 +241,49 @@ type ResolvedConfig struct {
 	ToolSource     string
 	ProviderSource string
 	ModelSource    string
+}
+
+// ToolEnvOverrides returns environment variable overrides needed for the
+// resolved tool/provider combination. For example, when using claude-code
+// with a provider that has a base_url, it sets ANTHROPIC_BASE_URL so that
+// Claude Code connects to the correct endpoint (e.g., a local model server).
+// Project-level provider config takes precedence over user-level.
+func ToolEnvOverrides(resolved *ResolvedConfig, projectCfg *ProjectConfig, userCfg *UserConfig) map[string]string {
+	env := make(map[string]string)
+	if resolved == nil {
+		return env
+	}
+
+	// Look up provider config: project first, then user
+	providerCfg := lookupProvider(resolved.Provider, projectCfg, userCfg)
+	if providerCfg == nil {
+		return env
+	}
+
+	// Tool-specific env var mappings
+	switch resolved.Tool {
+	case "claude-code":
+		if providerCfg.BaseURL != nil && *providerCfg.BaseURL != "" {
+			env["ANTHROPIC_BASE_URL"] = *providerCfg.BaseURL
+		}
+	}
+
+	return env
+}
+
+// lookupProvider finds a provider by name, checking project config first then user config.
+func lookupProvider(name string, projectCfg *ProjectConfig, userCfg *UserConfig) *ProviderConfig {
+	if projectCfg != nil && projectCfg.Providers != nil {
+		if p := projectCfg.Providers[name]; p != nil {
+			return p
+		}
+	}
+	if userCfg != nil && userCfg.Providers != nil {
+		if p := userCfg.Providers[name]; p != nil {
+			return p
+		}
+	}
+	return nil
 }
 
 // Validate validates the Config and collects all errors.
@@ -353,7 +421,7 @@ func (c *Config) Validate() []error {
 	for _, tierName := range tierNames {
 		// Try to resolve each tier for each tool
 		for tool := range referencedTools {
-			_, err := resolveModelTier(tierName, tool, userCfg)
+			_, err := resolveModelTier(tierName, tool, projectCfg, userCfg)
 			if err != nil {
 				// Only add error if this tier is actually used
 				// For now, we'll skip checking if tier is actually referenced

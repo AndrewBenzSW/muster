@@ -94,6 +94,7 @@ using Claude Agent SDK skills.`,
 			// Task 4.5: Implement template staging
 			ctx := prompt.NewPromptContext(
 				resolved,
+				projectCfg,
 				userCfg,
 				true, // interactive
 				"",   // slug
@@ -131,11 +132,23 @@ using Claude Agent SDK skills.`,
 			cmdArgs = append(cmdArgs, "--plugin-dir", tmpDir)
 		}
 
+		// Pass --model from resolved config
+		cmdArgs = append(cmdArgs, "--model", resolved.Model)
+
 		// Execute the tool
 		execCmd := exec.Command(config.ToolExecutable(resolved.Tool), cmdArgs...) //nolint:gosec // G204: Tool path validated through config system
 		execCmd.Stdin = os.Stdin
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
+
+		// Apply environment overrides (e.g., ANTHROPIC_BASE_URL for local models)
+		envOverrides := config.ToolEnvOverrides(resolved, projectCfg, userCfg)
+		if len(envOverrides) > 0 {
+			execCmd.Env = os.Environ()
+			for k, v := range envOverrides {
+				execCmd.Env = append(execCmd.Env, k+"="+v)
+			}
+		}
 
 		if err := execCmd.Run(); err != nil {
 			// Task 4.7: Add error handling with categories

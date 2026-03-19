@@ -111,6 +111,7 @@ By default, syncs from .roadmap.json to .muster/roadmap.json`,
 			sourceRoadmap,
 			targetRoadmap,
 			resolved,
+			projectCfg,
 			userCfg,
 			deleteFlag,
 			yesFlag,
@@ -160,6 +161,7 @@ func performSync(
 	sourceRoadmap *roadmap.Roadmap,
 	targetRoadmap *roadmap.Roadmap,
 	resolved *config.ResolvedConfig,
+	projectCfg *config.ProjectConfig,
 	userCfg *config.UserConfig,
 	deleteFlag bool,
 	yesFlag bool,
@@ -210,6 +212,7 @@ func performSync(
 		// Render prompt template
 		ctx := prompt.NewPromptContext(
 			resolved,
+			projectCfg,
 			userCfg,
 			true, // interactive
 			"",   // slug
@@ -234,6 +237,7 @@ func performSync(
 			Model:   resolved.Model,
 			Prompt:  promptContent,
 			Verbose: verbose,
+			Env:     config.ToolEnvOverrides(resolved, projectCfg, userCfg),
 		})
 		if err != nil {
 			// If AI fails, treat all remaining as unmatched (add as new)

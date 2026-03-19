@@ -84,7 +84,7 @@ Interactive/AI mode (when --title is not provided):
 		}
 
 		// Interactive/AI mode
-		return runInteractiveAdd(cmd, rm, resolved, userCfg, verbose)
+		return runInteractiveAdd(cmd, rm, resolved, projectCfg, userCfg, verbose)
 	},
 }
 
@@ -154,7 +154,7 @@ func runBatchAdd(rm *roadmap.Roadmap, title, priorityStr, statusStr, contextStr 
 }
 
 // runInteractiveAdd handles interactive/AI mode item creation
-func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config.ResolvedConfig, userCfg *config.UserConfig, verbose bool) error {
+func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, verbose bool) error {
 	// Check if both stdout and stdin are connected to a terminal
 	if !ui.IsInteractive() || !term.IsTerminal(int(os.Stdin.Fd())) { //nolint:gosec // G115: Safe conversion for terminal detection
 		return fmt.Errorf("interactive mode requires a terminal (TTY). Use --title flag for batch mode")
@@ -177,6 +177,7 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 	// Create prompt context
 	ctx := prompt.NewPromptContext(
 		resolved,
+		projectCfg,
 		userCfg,
 		true, // interactive
 		"",   // slug
@@ -204,6 +205,7 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 		Model:   resolved.Model,
 		Prompt:  promptContent,
 		Verbose: verbose,
+		Env:     config.ToolEnvOverrides(resolved, projectCfg, userCfg),
 	})
 	if err != nil {
 		return fmt.Errorf("AI invocation failed: %w", err)

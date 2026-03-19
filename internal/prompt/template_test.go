@@ -94,11 +94,7 @@ func TestGoldenFileInteractiveTrue(t *testing.T) {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"claude-code": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
 					Deep:     stringPtr("claude-opus-4"),
@@ -113,7 +109,7 @@ func TestGoldenFileInteractiveTrue(t *testing.T) {
 		Model:    "claude-sonnet-4.5",
 	}
 
-	ctx := NewPromptContext(resolved, userCfg, true, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
+	ctx := NewPromptContext(resolved, nil, userCfg, true, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
 
 	rendered, err := RenderTemplate("prompts/plan-feature/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
@@ -128,11 +124,7 @@ func TestGoldenFileInteractiveFalse(t *testing.T) {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"claude-code": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
 					Deep:     stringPtr("claude-opus-4"),
@@ -147,7 +139,7 @@ func TestGoldenFileInteractiveFalse(t *testing.T) {
 		Model:    "claude-sonnet-4.5",
 	}
 
-	ctx := NewPromptContext(resolved, userCfg, false, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
+	ctx := NewPromptContext(resolved, nil, userCfg, false, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
 
 	rendered, err := RenderTemplate("prompts/plan-feature/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
@@ -162,11 +154,7 @@ func TestGoldenFileModelsPopulation(t *testing.T) {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"opencode": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("gemma3:4b"),
 					Standard: stringPtr("qwen3:14b"),
 					Deep:     stringPtr("qwen3:235b"),
@@ -181,7 +169,7 @@ func TestGoldenFileModelsPopulation(t *testing.T) {
 		Model:    "qwen3:14b",
 	}
 
-	ctx := NewPromptContext(resolved, userCfg, true, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
+	ctx := NewPromptContext(resolved, nil, userCfg, true, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
 
 	// Verify Models struct is populated with opencode tiers
 	assert.Equal(t, "gemma3:4b", ctx.Models.Fast, "Models.Fast should use opencode's fast tier")
@@ -206,11 +194,7 @@ func TestGoldenFileExecutePlan(t *testing.T) {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"claude-code": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
 					Deep:     stringPtr("claude-opus-4"),
@@ -225,7 +209,7 @@ func TestGoldenFileExecutePlan(t *testing.T) {
 		Model:    "claude-sonnet-4.5",
 	}
 
-	ctx := NewPromptContext(resolved, userCfg, true, "test-execution", "/workspace", "/workspace", "/workspace/.plan/test-execution")
+	ctx := NewPromptContext(resolved, nil, userCfg, true, "test-execution", "/workspace", "/workspace", "/workspace/.plan/test-execution")
 
 	rendered, err := RenderTemplate("prompts/execute-plan/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
@@ -243,11 +227,7 @@ func TestGoldenFileExecutePlanInteractiveFalse(t *testing.T) {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"claude-code": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
 					Deep:     stringPtr("claude-opus-4"),
@@ -262,7 +242,7 @@ func TestGoldenFileExecutePlanInteractiveFalse(t *testing.T) {
 		Model:    "claude-sonnet-4.5",
 	}
 
-	ctx := NewPromptContext(resolved, userCfg, false, "test-execution", "/workspace", "/workspace", "/workspace/.plan/test-execution")
+	ctx := NewPromptContext(resolved, nil, userCfg, false, "test-execution", "/workspace", "/workspace", "/workspace/.plan/test-execution")
 
 	rendered, err := RenderTemplate("prompts/execute-plan/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
@@ -278,11 +258,7 @@ func TestGoldenFileReviewImplementationInteractive(t *testing.T) {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"claude-code": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
 					Deep:     stringPtr("claude-opus-4"),
@@ -297,7 +273,7 @@ func TestGoldenFileReviewImplementationInteractive(t *testing.T) {
 		Model:    "claude-sonnet-4.5",
 	}
 
-	ctx := NewPromptContext(resolved, userCfg, true, "test-review", "/workspace", "/workspace", "/workspace/.plan/test-review")
+	ctx := NewPromptContext(resolved, nil, userCfg, true, "test-review", "/workspace", "/workspace", "/workspace/.plan/test-review")
 
 	rendered, err := RenderTemplate("prompts/review-implementation/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
@@ -313,11 +289,7 @@ func TestGoldenFileReviewImplementationNonInteractive(t *testing.T) {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"claude-code": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
 					Deep:     stringPtr("claude-opus-4"),
@@ -332,7 +304,7 @@ func TestGoldenFileReviewImplementationNonInteractive(t *testing.T) {
 		Model:    "claude-sonnet-4.5",
 	}
 
-	ctx := NewPromptContext(resolved, userCfg, false, "test-review", "/workspace", "/workspace", "/workspace/.plan/test-review")
+	ctx := NewPromptContext(resolved, nil, userCfg, false, "test-review", "/workspace", "/workspace", "/workspace/.plan/test-review")
 
 	rendered, err := RenderTemplate("prompts/review-implementation/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
@@ -349,11 +321,7 @@ func TestAllTemplatesRenderWithoutErrors(t *testing.T) {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"claude-code": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
 					Deep:     stringPtr("claude-opus-4"),
@@ -378,7 +346,7 @@ func TestAllTemplatesRenderWithoutErrors(t *testing.T) {
 	}
 
 	// Test with Interactive=true
-	ctx := NewPromptContext(resolved, userCfg, true, "test-all", "/workspace", "/workspace", "/workspace/.plan/test-all")
+	ctx := NewPromptContext(resolved, nil, userCfg, true, "test-all", "/workspace", "/workspace", "/workspace/.plan/test-all")
 	for _, tmpl := range templates {
 		rendered, err := RenderTemplate(tmpl, ctx)
 		assert.NoError(t, err, "template %s should render without error (Interactive=true)", tmpl)
@@ -386,7 +354,7 @@ func TestAllTemplatesRenderWithoutErrors(t *testing.T) {
 	}
 
 	// Test with Interactive=false
-	ctx = NewPromptContext(resolved, userCfg, false, "test-all", "/workspace", "/workspace", "/workspace/.plan/test-all")
+	ctx = NewPromptContext(resolved, nil, userCfg, false, "test-all", "/workspace", "/workspace", "/workspace/.plan/test-all")
 	for _, tmpl := range templates {
 		rendered, err := RenderTemplate(tmpl, ctx)
 		assert.NoError(t, err, "template %s should render without error (Interactive=false)", tmpl)

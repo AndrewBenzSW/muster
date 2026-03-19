@@ -124,7 +124,7 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	if model == nil {
 		if tier, ok := stepDefaultTiers[stepName]; ok {
 			// Step has a default tier — try user's tier config first
-			resolvedTier, err := resolveModelTier(tier, *tool, userCfg)
+			resolvedTier, err := resolveModelTier(tier, *tool, projectCfg, userCfg)
 			if err == nil {
 				model = &resolvedTier
 				modelSrc = fmt.Sprintf("step default tier (%s) via user config", tier)
@@ -142,7 +142,7 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 	}
 
 	// Now resolve the model string (handle tier resolution)
-	resolvedModel, err := resolveModelTier(*model, *tool, userCfg)
+	resolvedModel, err := resolveModelTier(*model, *tool, projectCfg, userCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve model tier: %w", err)
 	}
@@ -158,9 +158,9 @@ func ResolveStep(stepName string, projectCfg *ProjectConfig, userCfg *UserConfig
 }
 
 // resolveModelTier resolves tier names (muster-fast, muster-standard, muster-deep)
-// to concrete model names using the specified tool's tier mapping.
-// Literal model names are passed through unchanged.
-func resolveModelTier(modelStr string, tool string, userCfg *UserConfig) (string, error) {
+// to concrete model names. Resolution order: project tool tiers > project model tiers >
+// user tool tiers > user model tiers. Literal model names are passed through unchanged.
+func resolveModelTier(modelStr string, tool string, projectCfg *ProjectConfig, userCfg *UserConfig) (string, error) {
 	// Check if this is a tier reference
 	var tierName string
 	switch modelStr {
@@ -175,37 +175,35 @@ func resolveModelTier(modelStr string, tool string, userCfg *UserConfig) (string
 		return modelStr, nil
 	}
 
-	// Look up the tier in the tool's model tiers
-	if userCfg.Tools != nil {
-		if toolCfg, ok := userCfg.Tools[tool]; ok && toolCfg != nil && toolCfg.ModelTiers != nil {
-			var tierModel *string
-			switch tierName {
-			case "fast":
-				tierModel = toolCfg.ModelTiers.Fast
-			case "standard":
-				tierModel = toolCfg.ModelTiers.Standard
-			case "deep":
-				tierModel = toolCfg.ModelTiers.Deep
-			}
-			if tierModel != nil {
-				return *tierModel, nil
+	// 1. Project tool tiers
+	if projectCfg != nil && projectCfg.Tools != nil {
+		if toolCfg, ok := projectCfg.Tools[tool]; ok && toolCfg != nil {
+			if m := toolCfg.ModelTiers.Resolve(tierName); m != nil {
+				return *m, nil
 			}
 		}
 	}
 
-	// Fall back to user-level model tiers
-	if userCfg.ModelTiers != nil {
-		var tierModel *string
-		switch tierName {
-		case "fast":
-			tierModel = userCfg.ModelTiers.Fast
-		case "standard":
-			tierModel = userCfg.ModelTiers.Standard
-		case "deep":
-			tierModel = userCfg.ModelTiers.Deep
+	// 2. Project model tiers
+	if projectCfg != nil {
+		if m := projectCfg.ModelTiers.Resolve(tierName); m != nil {
+			return *m, nil
 		}
-		if tierModel != nil {
-			return *tierModel, nil
+	}
+
+	// 3. User tool tiers
+	if userCfg != nil && userCfg.Tools != nil {
+		if toolCfg, ok := userCfg.Tools[tool]; ok && toolCfg != nil {
+			if m := toolCfg.ModelTiers.Resolve(tierName); m != nil {
+				return *m, nil
+			}
+		}
+	}
+
+	// 4. User model tiers
+	if userCfg != nil {
+		if m := userCfg.ModelTiers.Resolve(tierName); m != nil {
+			return *m, nil
 		}
 	}
 

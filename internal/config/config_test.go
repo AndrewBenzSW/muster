@@ -72,11 +72,7 @@ func TestUserConfigYAMLRoundTrip(t *testing.T) {
 		},
 		Tools: map[string]*ToolConfig{
 			"test-tool": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &ModelTiersConfig{
 					Fast:     strPtr("fast-model"),
 					Standard: strPtr("standard-model"),
 					Deep:     strPtr("deep-model"),
@@ -92,11 +88,7 @@ func TestUserConfigYAMLRoundTrip(t *testing.T) {
 				Timeout:   intPtr(300),
 			},
 		},
-		ModelTiers: &struct {
-			Fast     *string `yaml:"fast"`
-			Standard *string `yaml:"standard"`
-			Deep     *string `yaml:"deep"`
-		}{
+		ModelTiers: &ModelTiersConfig{
 			Fast:     strPtr("global-fast"),
 			Standard: strPtr("global-standard"),
 			Deep:     strPtr("global-deep"),
@@ -284,11 +276,7 @@ func TestConfigConstants(t *testing.T) {
 func TestToolConfigOptionalFields(t *testing.T) {
 	// Tool config with only model tiers
 	cfg := &ToolConfig{
-		ModelTiers: &struct {
-			Fast     *string `yaml:"fast"`
-			Standard *string `yaml:"standard"`
-			Deep     *string `yaml:"deep"`
-		}{
+		ModelTiers: &ModelTiersConfig{
 			Fast: strPtr("fast-model"),
 		},
 	}

@@ -60,11 +60,11 @@ type PromptContext struct {
 }
 
 // NewPromptContext creates a new PromptContext from resolved configuration and paths.
-// The Models struct is populated from the resolved tool's tier mappings in userCfg.
-// If the resolved tool is "opencode", Models.Fast will use opencode's fast tier mapping,
-// not claude's. This ensures template-generated commands use correct model names.
+// The Models struct is populated from tier mappings with project config taking precedence
+// over user config: project tool tiers > project model tiers > user tool tiers > user model tiers.
 func NewPromptContext(
 	resolved *config.ResolvedConfig,
+	projectCfg *config.ProjectConfig,
 	userCfg *config.UserConfig,
 	interactive bool,
 	slug string,
@@ -84,31 +84,29 @@ func NewPromptContext(
 		Extra:        make(map[string]interface{}),
 	}
 
-	// Populate Models from the resolved tool's tier mappings
-	// This ensures template-generated commands use the correct model names for the active tool
-	if userCfg.Tools != nil {
-		if toolCfg, ok := userCfg.Tools[resolved.Tool]; ok && toolCfg != nil && toolCfg.ModelTiers != nil {
-			if toolCfg.ModelTiers.Fast != nil {
-				ctx.Models.Fast = *toolCfg.ModelTiers.Fast
-			}
-			if toolCfg.ModelTiers.Standard != nil {
-				ctx.Models.Standard = *toolCfg.ModelTiers.Standard
-			}
-			if toolCfg.ModelTiers.Deep != nil {
-				ctx.Models.Deep = *toolCfg.ModelTiers.Deep
+	// Populate Models from tier mappings in priority order:
+	// project tool > project global > user tool > user global > hard-coded defaults
+	tierSources := collectTierSources(resolved.Tool, projectCfg, userCfg)
+	for _, tierName := range []string{"fast", "standard", "deep"} {
+		for _, src := range tierSources {
+			if m := src.Resolve(tierName); m != nil {
+				switch tierName {
+				case "fast":
+					if ctx.Models.Fast == "" {
+						ctx.Models.Fast = *m
+					}
+				case "standard":
+					if ctx.Models.Standard == "" {
+						ctx.Models.Standard = *m
+					}
+				case "deep":
+					if ctx.Models.Deep == "" {
+						ctx.Models.Deep = *m
+					}
+				}
+				break
 			}
 		}
-	}
-
-	// Fall back to user-level model tiers if tool-specific tiers are not available
-	if ctx.Models.Fast == "" && userCfg.ModelTiers != nil && userCfg.ModelTiers.Fast != nil {
-		ctx.Models.Fast = *userCfg.ModelTiers.Fast
-	}
-	if ctx.Models.Standard == "" && userCfg.ModelTiers != nil && userCfg.ModelTiers.Standard != nil {
-		ctx.Models.Standard = *userCfg.ModelTiers.Standard
-	}
-	if ctx.Models.Deep == "" && userCfg.ModelTiers != nil && userCfg.ModelTiers.Deep != nil {
-		ctx.Models.Deep = *userCfg.ModelTiers.Deep
 	}
 
 	// Fall back to hard-coded defaults if still empty
@@ -123,4 +121,32 @@ func NewPromptContext(
 	}
 
 	return ctx
+}
+
+// collectTierSources returns ModelTiersConfigs in priority order for the given tool.
+func collectTierSources(tool string, projectCfg *config.ProjectConfig, userCfg *config.UserConfig) []*config.ModelTiersConfig {
+	var sources []*config.ModelTiersConfig
+
+	// 1. Project tool tiers
+	if projectCfg != nil && projectCfg.Tools != nil {
+		if toolCfg, ok := projectCfg.Tools[tool]; ok && toolCfg != nil {
+			sources = append(sources, toolCfg.ModelTiers)
+		}
+	}
+	// 2. Project model tiers
+	if projectCfg != nil {
+		sources = append(sources, projectCfg.ModelTiers)
+	}
+	// 3. User tool tiers
+	if userCfg != nil && userCfg.Tools != nil {
+		if toolCfg, ok := userCfg.Tools[tool]; ok && toolCfg != nil {
+			sources = append(sources, toolCfg.ModelTiers)
+		}
+	}
+	// 4. User model tiers
+	if userCfg != nil {
+		sources = append(sources, userCfg.ModelTiers)
+	}
+
+	return sources
 }

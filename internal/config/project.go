@@ -85,12 +85,23 @@ func mergeProjectConfigs(base, override *ProjectConfig) *ProjectConfig {
 	result := &ProjectConfig{
 		Defaults:       base.Defaults,
 		Pipeline:       make(map[string]*PipelineStepConfig),
+		Tools:          make(map[string]*ToolConfig),
+		Providers:      make(map[string]*ProviderConfig),
+		ModelTiers:     base.ModelTiers,
 		LocalOverrides: make(map[string]interface{}),
 	}
 
 	// Copy base pipeline
 	for k, v := range base.Pipeline {
 		result.Pipeline[k] = v
+	}
+
+	// Copy base tools and providers
+	for k, v := range base.Tools {
+		result.Tools[k] = v
+	}
+	for k, v := range base.Providers {
+		result.Providers[k] = v
 	}
 
 	// Copy base local overrides
@@ -128,6 +139,19 @@ func mergeProjectConfigs(base, override *ProjectConfig) *ProjectConfig {
 	// Merge pipeline (entire step configs replace, not field-by-field within steps)
 	for k, v := range override.Pipeline {
 		result.Pipeline[k] = v
+	}
+
+	// Merge tools and providers (entire configs replace per key)
+	for k, v := range override.Tools {
+		result.Tools[k] = v
+	}
+	for k, v := range override.Providers {
+		result.Providers[k] = v
+	}
+
+	// Merge model tiers (override replaces entirely if set)
+	if override.ModelTiers != nil {
+		result.ModelTiers = override.ModelTiers
 	}
 
 	// Merge local overrides (entire values replace)

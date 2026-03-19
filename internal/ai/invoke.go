@@ -15,11 +15,12 @@ import (
 
 // InvokeConfig holds configuration for AI tool invocation.
 type InvokeConfig struct {
-	Tool    string        // path or name of the AI tool executable
-	Model   string        // model to use (passed as --model flag; empty means tool default)
-	Prompt  string        // prompt content to stage as a skill file
-	Verbose bool          // if true, print command and config to stderr
-	Timeout time.Duration // timeout for tool execution (default: 60 seconds if not set)
+	Tool    string            // path or name of the AI tool executable
+	Model   string            // model to use (passed as --model flag; empty means tool default)
+	Prompt  string            // prompt content to stage as a skill file
+	Verbose bool              // if true, print command and config to stderr
+	Timeout time.Duration     // timeout for tool execution (default: 60 seconds if not set)
+	Env     map[string]string // additional environment variables (e.g., ANTHROPIC_BASE_URL for local models)
 }
 
 // InvokeResult contains the result of AI tool invocation.
@@ -104,10 +105,25 @@ func InvokeAI(cfg InvokeConfig) (*InvokeResult, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 
+	// Apply environment overrides (e.g., ANTHROPIC_BASE_URL for local models)
+	if len(cfg.Env) > 0 {
+		cmd.Env = os.Environ()
+		for k, v := range cfg.Env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+	}
+
 	// Print verbose info if requested
 	if cfg.Verbose {
 		fmt.Fprintf(os.Stderr, "AI Invoke: tool=%s, tmpDir=%s\n", cfg.Tool, tmpDir)
 		fmt.Fprintf(os.Stderr, "Command: %s %v\n", cfg.Tool, cmd.Args[1:])
+		if len(cfg.Env) > 0 {
+			for k, v := range cfg.Env {
+				fmt.Fprintf(os.Stderr, "Env override: %s=%s\n", k, v)
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "Env overrides: none\n")
+		}
 	}
 
 	// Execute command
@@ -118,9 +134,13 @@ func InvokeAI(cfg InvokeConfig) (*InvokeResult, error) {
 			return nil, fmt.Errorf("tool execution timed out after %v", timeout)
 		}
 
-		// Non-zero exit code
+		// Non-zero exit code — include captured stdout which often contains the error details
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
+			output := strings.TrimSpace(stdout.String())
+			if output != "" {
+				return nil, fmt.Errorf("tool %q exited with code %d:\n%s", cfg.Tool, exitErr.ExitCode(), output)
+			}
 			return nil, fmt.Errorf("tool %q exited with code %d: %w", cfg.Tool, exitErr.ExitCode(), err)
 		}
 

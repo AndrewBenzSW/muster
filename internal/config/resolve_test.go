@@ -130,11 +130,7 @@ func TestResolveStep(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Fast:     strPtr("claude-sonnet-4.5"),
 							Standard: strPtr("claude-sonnet-4.5"),
 							Deep:     strPtr("claude-opus-4"),
@@ -161,11 +157,7 @@ func TestResolveStep(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Fast:     strPtr("claude-sonnet-4.5"),
 							Standard: strPtr("claude-sonnet-4.5"),
 							Deep:     strPtr("claude-opus-4"),
@@ -192,11 +184,7 @@ func TestResolveStep(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Fast:     strPtr("claude-sonnet-4.5"),
 							Standard: strPtr("claude-sonnet-4.5"),
 							Deep:     strPtr("claude-opus-4"),
@@ -241,11 +229,7 @@ func TestResolveStep(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							// Missing fast tier
 							Standard: strPtr("claude-sonnet-4.5"),
 							Deep:     strPtr("claude-opus-4"),
@@ -272,22 +256,14 @@ func TestResolveStep(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Fast:     strPtr("claude-sonnet-4.5"),
 							Standard: strPtr("claude-sonnet-4.5"),
 							Deep:     strPtr("claude-opus-4"),
 						},
 					},
 					"cursor": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Fast:     strPtr("gpt-4o-mini"),
 							Standard: strPtr("gpt-4o"),
 							Deep:     strPtr("o1-preview"),
@@ -380,11 +356,7 @@ func TestResolveStep(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Fast: strPtr("custom-fast-model"),
 						},
 					},
@@ -481,11 +453,7 @@ func TestResolveStep(t *testing.T) {
 				},
 			},
 			userCfg: &UserConfig{
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &ModelTiersConfig{
 					Fast:     strPtr("global-fast-model"),
 					Standard: strPtr("global-balanced-model"),
 					Deep:     strPtr("global-capable-model"),
@@ -510,20 +478,12 @@ func TestResolveStep(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Fast: strPtr("tool-specific-fast"),
 						},
 					},
 				},
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &ModelTiersConfig{
 					Fast: strPtr("global-fast"),
 				},
 			},
@@ -595,11 +555,7 @@ func TestResolveStep(t *testing.T) {
 				},
 			},
 			userCfg: &UserConfig{
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &ModelTiersConfig{
 					Standard: strPtr("fallback-balanced-model"),
 				},
 			},
@@ -759,11 +715,7 @@ func TestResolveModelTier(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Fast: strPtr("claude-sonnet-4.5"),
 						},
 					},
@@ -779,11 +731,7 @@ func TestResolveModelTier(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"cursor": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Standard: strPtr("gpt-4o"),
 						},
 					},
@@ -799,11 +747,7 @@ func TestResolveModelTier(t *testing.T) {
 			userCfg: &UserConfig{
 				Tools: map[string]*ToolConfig{
 					"claude-code": {
-						ModelTiers: &struct {
-							Fast     *string `yaml:"fast"`
-							Standard *string `yaml:"standard"`
-							Deep     *string `yaml:"deep"`
-						}{
+						ModelTiers: &ModelTiersConfig{
 							Deep: strPtr("claude-opus-4"),
 						},
 					},
@@ -817,11 +761,7 @@ func TestResolveModelTier(t *testing.T) {
 			modelStr: "muster-fast",
 			tool:     "unknown-tool",
 			userCfg: &UserConfig{
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &ModelTiersConfig{
 					Fast: strPtr("default-fast-model"),
 				},
 			},
@@ -859,7 +799,7 @@ func TestResolveModelTier(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := resolveModelTier(tt.modelStr, tt.tool, tt.userCfg)
+			result, err := resolveModelTier(tt.modelStr, tt.tool, nil, tt.userCfg)
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Empty(t, result)

@@ -704,11 +704,7 @@ func createTestContext() *PromptContext {
 	userCfg := &config.UserConfig{
 		Tools: map[string]*config.ToolConfig{
 			"claude-code": {
-				ModelTiers: &struct {
-					Fast     *string `yaml:"fast"`
-					Standard *string `yaml:"standard"`
-					Deep     *string `yaml:"deep"`
-				}{
+				ModelTiers: &config.ModelTiersConfig{
 					Fast:     stringPtr("claude-haiku-4"),
 					Standard: stringPtr("claude-sonnet-4.5"),
 					Deep:     stringPtr("claude-opus-4"),
@@ -723,5 +719,5 @@ func createTestContext() *PromptContext {
 		Model:    "claude-sonnet-4.5",
 	}
 
-	return NewPromptContext(resolved, userCfg, true, "test-staging", "/workspace", "/workspace", "/workspace/.plan/test-staging")
+	return NewPromptContext(resolved, nil, userCfg, true, "test-staging", "/workspace", "/workspace", "/workspace/.plan/test-staging")
 }
