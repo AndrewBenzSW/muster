@@ -62,7 +62,7 @@ jobs:
         shell: bash
 
       - name: Smoke test - version command
-        run: ./dist/muster version
+        run: ./dist/muster${{ runner.os == 'Windows' && '.exe' || '' }} version
         shell: bash
 
   lint:

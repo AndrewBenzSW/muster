@@ -10,6 +10,9 @@ linters:
     - errcheck
     - gosec
     - gocyclo
+  settings:
+    gocyclo:
+      min-complexity: 15  # reasonable for CLI code
 
 formatters:
   enable:
@@ -18,7 +21,3 @@ formatters:
 issues:
   max-issues-per-linter: 0  # report all issues
   max-same-issues: 0        # report all duplicate issues
-
-linters-settings:
-  gocyclo:
-    min-complexity: 15  # reasonable for CLI code
