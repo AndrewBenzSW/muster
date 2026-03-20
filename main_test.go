@@ -22,11 +22,11 @@ func testBinaryPath(t *testing.T, name string) string {
 
 func TestMain_SuccessExitCode(t *testing.T) {
 	binPath := testBinaryPath(t, "muster-test")
-	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
+	buildCmd := exec.Command("go", "build", "-o", binPath, ".") //nolint:gosec // G204: Test binary path is controlled
 	err := buildCmd.Run()
 	require.NoError(t, err, "building binary should succeed")
 
-	cmd := exec.Command(binPath, "--help")
+	cmd := exec.Command(binPath, "--help") //nolint:gosec // G204: Test binary path is controlled
 	output, err := cmd.CombinedOutput()
 	assert.NoError(t, err, "command should exit with code 0")
 
@@ -38,11 +38,11 @@ func TestMain_SuccessExitCode(t *testing.T) {
 
 func TestMain_SuccessExitCode_Version(t *testing.T) {
 	binPath := testBinaryPath(t, "muster-test-version")
-	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
+	buildCmd := exec.Command("go", "build", "-o", binPath, ".") //nolint:gosec // G204: Test binary path is controlled
 	err := buildCmd.Run()
 	require.NoError(t, err, "building binary should succeed")
 
-	cmd := exec.Command(binPath, "version")
+	cmd := exec.Command(binPath, "version") //nolint:gosec // G204: Test binary path is controlled
 	output, err := cmd.CombinedOutput()
 	assert.NoError(t, err, "version command should exit with code 0")
 
@@ -54,11 +54,11 @@ func TestMain_SuccessExitCode_Version(t *testing.T) {
 
 func TestMain_ErrorExitCode_InvalidCommand(t *testing.T) {
 	binPath := testBinaryPath(t, "muster-test-error")
-	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
+	buildCmd := exec.Command("go", "build", "-o", binPath, ".") //nolint:gosec // G204: Test binary path is controlled
 	err := buildCmd.Run()
 	require.NoError(t, err, "building binary should succeed")
 
-	cmd := exec.Command(binPath, "nonexistent-command")
+	cmd := exec.Command(binPath, "nonexistent-command") //nolint:gosec // G204: Test binary path is controlled
 	output, err := cmd.CombinedOutput()
 
 	// Command should exit with non-zero code

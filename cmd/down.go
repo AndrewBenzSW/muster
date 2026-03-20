@@ -74,7 +74,7 @@ Examples:
 		pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		if err := client.Ping(pingCtx); err != nil {
-			return fmt.Errorf("Docker check failed: %w", err)
+			return fmt.Errorf("docker check failed: %w", err)
 		}
 
 		// Determine which containers to stop

@@ -38,7 +38,7 @@ help: ## Show this help message
 
 build: ## Build the binary
 	@$(MKDIR) dist
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o dist$(SEP)$(BINARY_NAME) .
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o dist/$(BINARY_NAME) .
 
 test: ## Run tests with race detector
 	go test -v -race ./...
