@@ -174,6 +174,7 @@ using Claude Agent SDK skills.`,
 // 6. Generate Docker Compose file
 // 7. Start containers with docker compose up
 // 8. Execute tool in container with docker compose exec
+//
 //nolint:unused // Wired up once --yolo flag is ungated
 func runDockerFlow(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
