@@ -4,7 +4,7 @@
       "slug": "post-pr-lifecycle",
       "title": "Phase 4: muster out and git operations",
       "priority": "medium",
-      "status": "planned",
+      "status": "in_progress",
       "context": "internal/git/ (worktree CRUD, squash merge, conflict detection, version tagging), internal/git/pr.go (PR/MR creation via gh/glab, CI status polling, merge confirmation), internal/version/ (CHANGELOG parsing, semver bump). cmd/out.go handles post-PR lifecycle: monitor CI, push fixes, wait for merge, pull latest, clean up. Only meaningful for github-pr or gitlab-mr merge strategies. Git operation tests against real temp repos. Deliverable: muster out handles full post-PR lifecycle."
     },
     {
