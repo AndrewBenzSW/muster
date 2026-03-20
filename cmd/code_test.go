@@ -423,7 +423,8 @@ func TestCodeCommand_KeepStaged_PreservesDirectory(t *testing.T) {
 	require.NoError(t, err)
 
 	// List temp directories before execution
-	tmpDirsBefore, err := filepath.Glob("/tmp/muster-prompts-*")
+	globPattern := filepath.Join(os.TempDir(), "muster-prompts-*")
+	tmpDirsBefore, err := filepath.Glob(globPattern)
 	require.NoError(t, err)
 
 	// Execute the command - the mock tool will fail because it expects --print flag,
@@ -431,7 +432,7 @@ func TestCodeCommand_KeepStaged_PreservesDirectory(t *testing.T) {
 	_ = cmd.RunE(cmd, []string{})
 
 	// List temp directories after execution
-	tmpDirsAfter, err := filepath.Glob("/tmp/muster-prompts-*")
+	tmpDirsAfter, err := filepath.Glob(globPattern)
 	require.NoError(t, err)
 
 	// Verify that a new temp directory was created and still exists
