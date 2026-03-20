@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`muster out` Command**: Post-PR lifecycle management — monitors CI checks on a PR/MR, optionally invokes AI to fix CI failures (up to 3 retries), waits for merge, pulls latest changes, and cleans up the worktree, branch, and roadmap entry
+- **`internal/git/` Package**: Low-level git operations (`RunGit`, `CurrentBranch`, `PullLatest`, `DeleteBranch`, `RemoveWorktree`) with explicit directory parameters on every function for cross-platform safety
+- **`internal/vcs/` Package**: Platform abstraction for GitHub (`gh`) and GitLab (`glab`) CLIs behind a common `VCS` interface with `CommandRunner` injection for testability — supports auth checking, PR status viewing, CI check listing, failed log retrieval, and PR merging
+- **Merge Strategy Configuration**: `merge_strategy` field on `ProjectConfig` with `direct`, `github-pr`, and `gitlab-mr` values, defaulting to `github-pr`
+- **AI-Assisted CI Fixing**: When CI fails, `muster out` fetches failure logs and invokes AI to analyze and push fixes, with `--no-fix` flag to skip and configurable retry limit (default 3)
+- **Fault-Tolerant Cleanup**: All cleanup steps (pull latest, remove worktree, delete branch, update roadmap) are attempted regardless of individual failures, with errors collected and reported together
+- **`testutil.InitGitRepo` Helper**: Shared test utility for initializing git repos with deterministic branch names (`git init -b main`) and initial commits
+
 ## [0.4.0] - 2026-03-19
 
 ### Added
