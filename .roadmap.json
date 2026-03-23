@@ -4,7 +4,7 @@
       "slug": "standalone-planning",
       "title": "Phase 5: Standalone planning command",
       "priority": "medium",
-      "status": "planned",
+      "status": "in_progress",
       "context": "cmd/plan.go resolves slug (args or picker), stages plan-feature templates, invokes Claude, verifies plan output exists at .muster/work/{slug}/plan/implementation-plan.md. Handles pre-planning where no worktree exists yet. Deliverable: muster plan [slug] runs research/synthesis/planning and produces implementation plan."
     },
     {
