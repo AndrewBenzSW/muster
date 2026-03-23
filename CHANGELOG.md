@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`muster plan` Command**: AI-assisted implementation planning for roadmap items — resolves a slug from argument or interactive picker, stages plan-feature skill templates, invokes Claude Code to perform multi-phase research/synthesis/planning, and produces an implementation plan at `.muster/work/{slug}/plan/implementation-plan.md`
+- **Dual-Mode Slug Resolution**: Accept slug as positional argument for scripted usage, or select interactively from a priority-sorted picker with completed items filtered out
+- **Plan Overwrite Protection**: Detect existing plans and prompt for confirmation before overwriting, with `--force` flag to skip in automated workflows
+- **`muster-deep` Default Tier for Planning**: Plan command defaults to the highest-capability model tier (`muster-deep`) for codebase analysis and architectural reasoning, configurable via project/user config
+- **Non-Fatal Warnings**: Status-aware warnings (completed items, blocked items) printed to stderr in interactive mode to guide users without blocking execution
+
 ## [0.5.0] - 2026-03-23
 
 ### Added
