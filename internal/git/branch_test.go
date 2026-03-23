@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/abenz1267/muster/internal/testutil"
@@ -80,9 +81,14 @@ func TestPullLatest_Success(t *testing.T) {
 	cmd.Dir = cloneDir
 	require.NoError(t, cmd.Run())
 
+	// Detect the default branch name from bare repo HEAD
+	refOut, err := exec.Command("git", "-C", bareDir, "symbolic-ref", "HEAD").Output() //nolint:gosec // G204: Test command with controlled temp dir path
+	require.NoError(t, err)
+	branch := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(refOut)), "refs/heads/"))
+
 	// Create initial commit in clone
 	testFile := filepath.Join(cloneDir, "test.txt")
-	err := os.WriteFile(testFile, []byte("initial"), 0644) //nolint:gosec // G306: Test file permissions
+	err = os.WriteFile(testFile, []byte("initial"), 0644) //nolint:gosec // G306: Test file permissions
 	require.NoError(t, err)
 
 	cmd = exec.Command("git", "add", "test.txt")
@@ -94,12 +100,12 @@ func TestPullLatest_Success(t *testing.T) {
 	require.NoError(t, cmd.Run())
 
 	// Push to bare repo
-	cmd = exec.Command("git", "push", "origin", "master")
+	cmd = exec.Command("git", "push", "origin", branch) //nolint:gosec // G204: Test command with controlled branch name
 	cmd.Dir = cloneDir
 	require.NoError(t, cmd.Run())
 
 	// Pull should succeed
-	err = PullLatest(cloneDir, "origin", "master")
+	err = PullLatest(cloneDir, "origin", branch)
 	assert.NoError(t, err)
 }
 
