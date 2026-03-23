@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-23
+
 ### Added
 
 - **`muster plan` Command**: AI-assisted implementation planning for roadmap items — resolves a slug from argument or interactive picker, stages plan-feature skill templates, invokes Claude Code to perform multi-phase research/synthesis/planning, and produces an implementation plan at `.muster/work/{slug}/plan/implementation-plan.md`

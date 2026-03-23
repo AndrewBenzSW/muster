@@ -654,6 +654,80 @@ func TestResolveStep(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name:       "plan step defaults to deep tier model",
+			stepName:   "plan",
+			projectCfg: &ProjectConfig{},
+			userCfg:    &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    DefaultDeepModel,
+			},
+			expectError: false,
+		},
+		{
+			name:       "plan step uses user deep tier when configured",
+			stepName:   "plan",
+			projectCfg: &ProjectConfig{},
+			userCfg: &UserConfig{
+				Tools: map[string]*ToolConfig{
+					"claude-code": {
+						ModelTiers: &ModelTiersConfig{
+							Deep: strPtr("custom-deep-model"),
+						},
+					},
+				},
+			},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    "custom-deep-model",
+			},
+			expectError: false,
+		},
+		{
+			name:     "plan step explicit model overrides deep default",
+			stepName: "plan",
+			projectCfg: &ProjectConfig{
+				Pipeline: map[string]*PipelineStepConfig{
+					"plan": {
+						Model: strPtr("explicit-plan-model"),
+					},
+				},
+			},
+			userCfg: &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    "explicit-plan-model",
+			},
+			expectError: false,
+		},
+		{
+			name:     "plan step invalid tier override returns error",
+			stepName: "plan",
+			projectCfg: &ProjectConfig{
+				Pipeline: map[string]*PipelineStepConfig{
+					"plan": {
+						Model: strPtr("muster-deep"),
+					},
+				},
+			},
+			userCfg: &UserConfig{
+				Tools: map[string]*ToolConfig{
+					"claude-code": {
+						ModelTiers: &ModelTiersConfig{
+							// Missing deep tier
+							Fast:     strPtr("claude-sonnet-4.5"),
+							Standard: strPtr("claude-sonnet-4.5"),
+						},
+					},
+				},
+			},
+			expected:    nil,
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -859,4 +933,55 @@ func TestResolveModelTier(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStepDefaultTiers_ContainsPlanKey(t *testing.T) {
+	tier, exists := stepDefaultTiers["plan"]
+	assert.True(t, exists, "stepDefaultTiers should contain 'plan' key")
+	assert.Equal(t, "muster-deep", tier, "plan step should default to muster-deep tier")
+}
+
+func TestResolveStep_PlanDefaultsTier(t *testing.T) {
+	result, err := ResolveStep("plan", &ProjectConfig{}, &UserConfig{})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, DefaultDeepModel, result.Model, "plan step should default to deep tier model")
+}
+
+func TestResolveStep_PlanOverrideModel(t *testing.T) {
+	projectCfg := &ProjectConfig{
+		Pipeline: map[string]*PipelineStepConfig{
+			"plan": {
+				Model: strPtr("custom-plan-model"),
+			},
+		},
+	}
+	result, err := ResolveStep("plan", projectCfg, &UserConfig{})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "custom-plan-model", result.Model, "plan step should allow explicit model override")
+}
+
+func TestResolveStep_PlanInvalidTierOverride_Errors(t *testing.T) {
+	projectCfg := &ProjectConfig{
+		Pipeline: map[string]*PipelineStepConfig{
+			"plan": {
+				Model: strPtr("muster-deep"),
+			},
+		},
+	}
+	userCfg := &UserConfig{
+		Tools: map[string]*ToolConfig{
+			"claude-code": {
+				ModelTiers: &ModelTiersConfig{
+					Fast:     strPtr("claude-sonnet-4.5"),
+					Standard: strPtr("claude-sonnet-4.5"),
+					// Missing Deep tier
+				},
+			},
+		},
+	}
+	result, err := ResolveStep("plan", projectCfg, userCfg)
+	assert.Error(t, err, "plan step with invalid tier override should return error")
+	assert.Nil(t, result)
 }
