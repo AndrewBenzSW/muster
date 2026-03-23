@@ -533,6 +533,134 @@ func TestToolExecutable(t *testing.T) {
 	}
 }
 
+func TestResolveMergeStrategy(t *testing.T) {
+	tests := []struct {
+		name       string
+		projectCfg *ProjectConfig
+		expected   string
+	}{
+		{
+			name:       "nil config returns default",
+			projectCfg: nil,
+			expected:   DefaultMergeStrategy,
+		},
+		{
+			name:       "empty config returns default",
+			projectCfg: &ProjectConfig{},
+			expected:   DefaultMergeStrategy,
+		},
+		{
+			name: "direct strategy",
+			projectCfg: &ProjectConfig{
+				MergeStrategy: strPtr(MergeStrategyDirect),
+			},
+			expected: MergeStrategyDirect,
+		},
+		{
+			name: "github-pr strategy",
+			projectCfg: &ProjectConfig{
+				MergeStrategy: strPtr(MergeStrategyGitHubPR),
+			},
+			expected: MergeStrategyGitHubPR,
+		},
+		{
+			name: "gitlab-mr strategy",
+			projectCfg: &ProjectConfig{
+				MergeStrategy: strPtr(MergeStrategyGitLabMR),
+			},
+			expected: MergeStrategyGitLabMR,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ResolveMergeStrategy(tt.projectCfg)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestValidateMergeStrategy(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     *Config
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid direct strategy",
+			cfg: &Config{
+				User: DefaultUserConfig(),
+				Project: &ProjectConfig{
+					MergeStrategy: strPtr(MergeStrategyDirect),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid github-pr strategy",
+			cfg: &Config{
+				User: DefaultUserConfig(),
+				Project: &ProjectConfig{
+					MergeStrategy: strPtr(MergeStrategyGitHubPR),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid gitlab-mr strategy",
+			cfg: &Config{
+				User: DefaultUserConfig(),
+				Project: &ProjectConfig{
+					MergeStrategy: strPtr(MergeStrategyGitLabMR),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid strategy",
+			cfg: &Config{
+				User: DefaultUserConfig(),
+				Project: &ProjectConfig{
+					MergeStrategy: strPtr("foobar"),
+				},
+			},
+			wantErr: true,
+			errMsg:  "invalid merge_strategy \"foobar\"",
+		},
+		{
+			name: "nil merge strategy is valid",
+			cfg: &Config{
+				User:    DefaultUserConfig(),
+				Project: &ProjectConfig{},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := tt.cfg.Validate()
+			if tt.wantErr {
+				require.NotEmpty(t, errs, "expected validation error")
+				found := false
+				for _, err := range errs {
+					if strings.Contains(err.Error(), tt.errMsg) {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected error containing %q, got: %v", tt.errMsg, errs)
+			} else {
+				// May have other validation errors, but not for merge strategy
+				for _, err := range errs {
+					assert.NotContains(t, err.Error(), "merge_strategy", "should not error on valid merge strategy")
+				}
+			}
+		})
+	}
+}
+
 // Helper functions for tests
 func intPtr(i int) *int {
 	return &i

@@ -45,6 +45,12 @@ const (
 	DefaultFastModel     = "haiku"
 	DefaultStandardModel = DefaultModel // sonnet
 	DefaultDeepModel     = "sonnet"
+
+	// Merge strategy constants
+	MergeStrategyDirect   = "direct"
+	MergeStrategyGitHubPR = "github-pr"
+	MergeStrategyGitLabMR = "gitlab-mr"
+	DefaultMergeStrategy  = MergeStrategyGitHubPR
 )
 
 // ToolExecutable returns the actual executable name for a tool config name.
@@ -124,6 +130,9 @@ type ProjectConfig struct {
 
 	// LocalOverrides contains local development overrides
 	LocalOverrides map[string]interface{} `yaml:"local_overrides"`
+
+	// MergeStrategy specifies how post-PR work is merged ("direct", "github-pr", "gitlab-mr")
+	MergeStrategy *string `yaml:"merge_strategy"`
 }
 
 // ToolConfig represents configuration for a specific tool
@@ -286,6 +295,15 @@ func lookupProvider(name string, projectCfg *ProjectConfig, userCfg *UserConfig)
 	return nil
 }
 
+// ResolveMergeStrategy returns the merge strategy from the project config,
+// or the default merge strategy if not configured.
+func ResolveMergeStrategy(projectCfg *ProjectConfig) string {
+	if projectCfg != nil && projectCfg.MergeStrategy != nil {
+		return *projectCfg.MergeStrategy
+	}
+	return DefaultMergeStrategy
+}
+
 // Validate validates the Config and collects all errors.
 // It checks that:
 // - Referenced tools exist in user config
@@ -428,6 +446,17 @@ func (c *Config) Validate() []error {
 				// since that would require parsing all model strings
 				_ = err
 			}
+		}
+	}
+
+	// Validate merge strategy if set
+	if projectCfg.MergeStrategy != nil {
+		strategy := *projectCfg.MergeStrategy
+		switch strategy {
+		case MergeStrategyDirect, MergeStrategyGitHubPR, MergeStrategyGitLabMR:
+			// Valid strategy
+		default:
+			errs = append(errs, fmt.Errorf("invalid merge_strategy %q; must be one of: %s, %s, %s", strategy, MergeStrategyDirect, MergeStrategyGitHubPR, MergeStrategyGitLabMR))
 		}
 	}
 

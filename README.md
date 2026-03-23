@@ -143,7 +143,6 @@ See [docs/design.md](docs/design.md) for the full design document and [CHANGELOG
 ### High Priority
 
 ### Medium Priority
-- **Phase 4: muster out and git operations** - Post-PR lifecycle management and git operations
 - **Phase 5: Standalone planning command** - Standalone planning command for research and synthesis
 - **Phase 6: Full muster in pipeline** - Complete muster in pipeline with state machine and checkpoints
 - **Phase 7: init, doctor, help, and update commands** - Tooling commands for setup, health checks, and updates

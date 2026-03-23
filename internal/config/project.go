@@ -89,6 +89,7 @@ func mergeProjectConfigs(base, override *ProjectConfig) *ProjectConfig {
 		Providers:      make(map[string]*ProviderConfig),
 		ModelTiers:     base.ModelTiers,
 		LocalOverrides: make(map[string]interface{}),
+		MergeStrategy:  base.MergeStrategy,
 	}
 
 	// Copy base pipeline
@@ -157,6 +158,11 @@ func mergeProjectConfigs(base, override *ProjectConfig) *ProjectConfig {
 	// Merge local overrides (entire values replace)
 	for k, v := range override.LocalOverrides {
 		result.LocalOverrides[k] = v
+	}
+
+	// Merge merge strategy (override replaces if set)
+	if override.MergeStrategy != nil {
+		result.MergeStrategy = override.MergeStrategy
 	}
 
 	return result

@@ -15,17 +15,19 @@ All three must pass before committing. CI runs tests on Linux, macOS, and Window
 ## Project Structure
 
 ```
-cmd/                  Cobra command definitions (root, code, add, sync, status, down, version)
+cmd/                  Cobra command definitions (root, code, add, sync, status, down, out, version)
 internal/
   ai/                 AI tool invocation (stages prompt, runs claude --print, captures output)
   config/             Two-layer config system (user + project) with 5-step resolution chain
   docker/             Docker orchestration for --yolo mode (compose generation, auth, worktree)
+  git/                Git operations (branch cleanup, worktree management, PR detection)
   prompt/             Template rendering and skill staging for Claude Code plugins
     prompts/          Embedded Go templates (.md.tmpl) for skills and AI prompts
     testdata/         Golden files for template rendering tests
   roadmap/            Roadmap data model, JSON loading/saving, slug generation
   testutil/           Shared test helpers
   ui/                 Output formatting (table/JSON auto-detect), TUI pickers
+  vcs/                Version control abstraction layer (Git implementation)
 ```
 
 ## Key Patterns
@@ -53,4 +55,4 @@ Roadmap items have: `slug` (unique kebab-case ID, max 40 chars), `title`, `prior
 
 ## Commands Not Yet Implemented
 
-`muster in`, `muster out`, `muster plan`, `muster init`, `muster doctor`, `muster update` are planned for future phases. The `--yolo` flag on `code` is gated. The `down` command exists but is only useful once container orchestration is active.
+`muster in`, `muster plan`, `muster init`, `muster doctor`, `muster update` are planned for future phases. The `--yolo` flag on `code` is gated. The `down` command exists but is only useful once container orchestration is active.

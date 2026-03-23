@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/abenz1267/muster/internal/config"
+	"github.com/abenz1267/muster/internal/vcs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -413,6 +414,57 @@ func TestRenderTemplateWithMissingKeyInTemplate(t *testing.T) {
 	// an undefined variable, which we can't create without modifying embedded files
 	// So we document the expected behavior:
 	// If a template uses {{.UndefinedField}}, the error should mention "undefined"
+}
+
+func TestGoldenFileCIFixPrompt(t *testing.T) {
+	// Test out/ci-fix-prompt template with sample failed checks
+	err := ParseTemplates()
+	require.NoError(t, err)
+
+	userCfg := &config.UserConfig{
+		Tools: map[string]*config.ToolConfig{
+			"claude-code": {
+				ModelTiers: &config.ModelTiersConfig{
+					Fast:     stringPtr("claude-haiku-4"),
+					Standard: stringPtr("claude-sonnet-4.5"),
+					Deep:     stringPtr("claude-opus-4"),
+				},
+			},
+		},
+	}
+
+	resolved := &config.ResolvedConfig{
+		Tool:     "claude-code",
+		Provider: "anthropic",
+		Model:    "claude-sonnet-4.5",
+	}
+
+	ctx := NewPromptContext(resolved, nil, userCfg, true, "test-pr", "/workspace/worktree", "/workspace", "/workspace/.plan/test-pr")
+
+	// Add sample failed check logs to Extra
+	ctx.Extra["Attempt"] = 2
+	ctx.Extra["FailedChecks"] = []vcs.FailedCheckLog{
+		{
+			CheckName: "lint",
+			JobID:     "job-12345",
+			Logs: `golangci-lint found issues:
+internal/config/resolve.go:45:2: unused variable 'foo'
+internal/vcs/github.go:89:1: function complexity exceeds threshold`,
+		},
+		{
+			CheckName: "test",
+			JobID:     "job-12346",
+			Logs: `=== RUN   TestParseConfig
+--- FAIL: TestParseConfig (0.01s)
+    config_test.go:42: expected nil error, got: file not found
+FAIL`,
+		},
+	}
+
+	rendered, err := RenderTemplate("prompts/out/ci-fix-prompt.md.tmpl", ctx)
+	require.NoError(t, err)
+
+	compareGolden(t, "out-ci-fix-prompt.golden", rendered)
 }
 
 // Helper functions

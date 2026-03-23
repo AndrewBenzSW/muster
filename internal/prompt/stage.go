@@ -146,9 +146,9 @@ func StageSkills(ctx *PromptContext) (tmpDir string, cleanup func(), err error) 
 			return nil
 		}
 
-		// Skip non-skill prompts (add-item, sync-match, test)
-		// These templates are used separately via ai.InvokeAI() with specific Extra data
-		if strings.Contains(path, "add-item/") || strings.Contains(path, "sync-match/") || strings.Contains(path, "test/") {
+		// Skip non-skill prompts (add-item, sync-match, out, test)
+		// These templates are used separately via ai.InvokeAI() or direct rendering with specific Extra data
+		if strings.Contains(path, "add-item/") || strings.Contains(path, "sync-match/") || strings.Contains(path, "out/") || strings.Contains(path, "test/") {
 			return nil
 		}
 

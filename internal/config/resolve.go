@@ -10,6 +10,7 @@ import (
 var stepDefaultTiers = map[string]string{
 	"add":  "muster-fast",
 	"sync": "muster-fast",
+	"out":  "muster-standard",
 }
 
 // concreteModelForTier returns the hard-coded default model for a tier name.

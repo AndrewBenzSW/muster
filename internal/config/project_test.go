@@ -421,6 +421,42 @@ func TestMergeProjectConfigs(t *testing.T) {
 				assert.Equal(t, "value", result.LocalOverrides["new_flag"].(string))
 			},
 		},
+		{
+			name: "merge_strategy from base only",
+			base: &ProjectConfig{
+				MergeStrategy: strPtr("direct"),
+			},
+			override: &ProjectConfig{},
+			verifyFunc: func(t *testing.T, result *ProjectConfig) {
+				require.NotNil(t, result.MergeStrategy)
+				assert.Equal(t, "direct", *result.MergeStrategy)
+			},
+		},
+		{
+			name: "merge_strategy override replaces base",
+			base: &ProjectConfig{
+				MergeStrategy: strPtr("direct"),
+			},
+			override: &ProjectConfig{
+				MergeStrategy: strPtr("github-pr"),
+			},
+			verifyFunc: func(t *testing.T, result *ProjectConfig) {
+				require.NotNil(t, result.MergeStrategy)
+				assert.Equal(t, "github-pr", *result.MergeStrategy)
+			},
+		},
+		{
+			name: "merge_strategy nil in both",
+			base: &ProjectConfig{
+				Defaults: &DefaultsConfig{
+					Tool: strPtr("claude-code"),
+				},
+			},
+			override: &ProjectConfig{},
+			verifyFunc: func(t *testing.T, result *ProjectConfig) {
+				assert.Nil(t, result.MergeStrategy)
+			},
+		},
 	}
 
 	for _, tt := range tests {

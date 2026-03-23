@@ -604,6 +604,56 @@ func TestResolveStep(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name:       "out step defaults to standard tier model",
+			stepName:   "out",
+			projectCfg: &ProjectConfig{},
+			userCfg:    &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    DefaultStandardModel,
+			},
+			expectError: false,
+		},
+		{
+			name:       "out step uses user standard tier when configured",
+			stepName:   "out",
+			projectCfg: &ProjectConfig{},
+			userCfg: &UserConfig{
+				Tools: map[string]*ToolConfig{
+					"claude-code": {
+						ModelTiers: &ModelTiersConfig{
+							Standard: strPtr("custom-standard-model"),
+						},
+					},
+				},
+			},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    "custom-standard-model",
+			},
+			expectError: false,
+		},
+		{
+			name:     "out step explicit model overrides standard default",
+			stepName: "out",
+			projectCfg: &ProjectConfig{
+				Pipeline: map[string]*PipelineStepConfig{
+					"out": {
+						Model: strPtr("explicit-out-model"),
+					},
+				},
+			},
+			userCfg: &UserConfig{},
+			expected: &ResolvedConfig{
+				Tool:     DefaultTool,
+				Provider: DefaultProvider,
+				Model:    "explicit-out-model",
+			},
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {

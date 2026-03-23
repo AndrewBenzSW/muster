@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-23
+
 ### Added
 
 - **`muster out` Command**: Post-PR lifecycle management — monitors CI checks on a PR/MR, optionally invokes AI to fix CI failures (up to 3 retries), waits for merge, pulls latest changes, and cleans up the worktree, branch, and roadmap entry
