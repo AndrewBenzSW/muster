@@ -111,6 +111,8 @@ func TestGoldenFileInteractiveTrue(t *testing.T) {
 	}
 
 	ctx := NewPromptContext(resolved, nil, userCfg, true, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
+	ctx.Extra["ItemTitle"] = "Test Feature"
+	ctx.Extra["ItemContext"] = "A test feature for golden file verification."
 
 	rendered, err := RenderTemplate("prompts/plan-feature/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
@@ -141,6 +143,8 @@ func TestGoldenFileInteractiveFalse(t *testing.T) {
 	}
 
 	ctx := NewPromptContext(resolved, nil, userCfg, false, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
+	ctx.Extra["ItemTitle"] = "Test Feature"
+	ctx.Extra["ItemContext"] = "A test feature for golden file verification."
 
 	rendered, err := RenderTemplate("prompts/plan-feature/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
@@ -171,6 +175,8 @@ func TestGoldenFileModelsPopulation(t *testing.T) {
 	}
 
 	ctx := NewPromptContext(resolved, nil, userCfg, true, "test-feature", "/workspace", "/workspace", "/workspace/.plan/test-feature")
+	ctx.Extra["ItemTitle"] = "Test Feature"
+	ctx.Extra["ItemContext"] = "A test feature for golden file verification."
 
 	// Verify Models struct is populated with opencode tiers
 	assert.Equal(t, "gemma3:4b", ctx.Models.Fast, "Models.Fast should use opencode's fast tier")
@@ -179,11 +185,6 @@ func TestGoldenFileModelsPopulation(t *testing.T) {
 
 	rendered, err := RenderTemplate("prompts/plan-feature/SKILL.md.tmpl", ctx)
 	require.NoError(t, err)
-
-	// Verify rendered output contains opencode model names
-	assert.Contains(t, rendered, "gemma3:4b", "rendered template should contain opencode fast tier")
-	assert.Contains(t, rendered, "qwen3:14b", "rendered template should contain opencode standard tier")
-	assert.Contains(t, rendered, "qwen3:235b", "rendered template should contain opencode deep tier")
 
 	compareGolden(t, "plan-feature-opencode-models.golden", rendered)
 }
