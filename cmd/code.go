@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
+	"github.com/abenz1267/muster/internal/coding"
 	"github.com/abenz1267/muster/internal/config"
 	"github.com/abenz1267/muster/internal/docker"
 	"github.com/abenz1267/muster/internal/prompt"
@@ -87,8 +87,7 @@ using Claude Agent SDK skills.`,
 			return err
 		}
 
-		// Build command arguments
-		var cmdArgs []string
+		// Stage skills if plugin is enabled
 		var tmpDir string
 		if !noPlugin {
 			// Task 4.5: Implement template staging
@@ -128,36 +127,33 @@ using Claude Agent SDK skills.`,
 				shouldCleanup = false
 				fmt.Fprintf(os.Stderr, "Staged skills kept at: %s\n", tmpDir)
 			}
-
-			cmdArgs = append(cmdArgs, "--plugin-dir", tmpDir)
 		}
-
-		// Pass --model from resolved config
-		cmdArgs = append(cmdArgs, "--model", resolved.Model)
-
-		// Execute the tool
-		execCmd := exec.Command(config.ToolExecutable(resolved.Tool), cmdArgs...) //nolint:gosec // G204: Tool path validated through config system
-		execCmd.Stdin = os.Stdin
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
 
 		// Apply environment overrides (e.g., ANTHROPIC_BASE_URL for local models)
 		envOverrides := config.ToolEnvOverrides(resolved, projectCfg, userCfg)
-		if len(envOverrides) > 0 {
-			execCmd.Env = os.Environ()
-			for k, v := range envOverrides {
-				execCmd.Env = append(execCmd.Env, k+"="+v)
-			}
+
+		// Create interactive tool via factory
+		interactiveTool, err := interactiveToolFactory()
+		if err != nil {
+			return fmt.Errorf("failed to create interactive tool: %w", err)
 		}
 
-		if err := execCmd.Run(); err != nil {
-			// Task 4.7: Add error handling with categories
-			executable := config.ToolExecutable(resolved.Tool)
-			var execErr *exec.Error
-			if errors.As(err, &execErr) && execErr.Err == exec.ErrNotFound {
-				return fmt.Errorf("tool %q not found: %w\n\nPlease install %s and ensure it is in your PATH.\nFor Claude Code: https://docs.anthropic.com/claude-code\nFor OpenCode: https://github.com/opencodeinterpreter/opencode", executable, err, executable)
-			}
-			return fmt.Errorf("failed to execute %s: %w", executable, err)
+		// Get context (use Background if cmd.Context() is nil, e.g., in tests)
+		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+
+		// Run interactive session
+		err = interactiveTool.RunInteractive(ctx, coding.InteractiveConfig{
+			Tool:      config.ToolExecutable(resolved.Tool),
+			Model:     resolved.Model,
+			PluginDir: tmpDir,
+			Env:       envOverrides,
+			Verbose:   verbose,
+		})
+		if err != nil {
+			return err
 		}
 
 		return nil
@@ -301,20 +297,20 @@ func runDockerFlow(cmd *cobra.Command, args []string) error {
 	if verbose {
 		fmt.Fprintf(os.Stderr, "Starting Docker containers...\n")
 	}
-	client, err := docker.NewClient()
+	runtime, err := containerRuntimeFactory()
 	if err != nil {
-		return fmt.Errorf("failed to create Docker client: %w", err)
+		return fmt.Errorf("failed to create Docker runtime: %w", err)
 	}
-	defer func() { _ = client.Close() }()
+	defer func() { _ = runtime.Close() }()
 
 	// Check Docker is running
-	if err := client.Ping(ctx); err != nil {
+	if err := runtime.Ping(ctx); err != nil {
 		return fmt.Errorf("docker check failed: %w", err)
 	}
 
 	upCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
-	if err := client.ComposeUp(upCtx, composePath, projectName); err != nil {
+	if err := runtime.ComposeUp(upCtx, composePath, projectName); err != nil {
 		return fmt.Errorf("failed to start containers: %w", err)
 	}
 
@@ -334,7 +330,7 @@ func runDockerFlow(cmd *cobra.Command, args []string) error {
 
 	// Execute the tool in the dev-agent service
 	// Pass through stdin/stdout/stderr for interactive session
-	execErr := client.ComposeExec(ctx, composePath, projectName, "dev-agent", []string{config.ToolExecutable(resolved.Tool)})
+	execErr := runtime.ComposeExec(ctx, composePath, projectName, "dev-agent", []string{config.ToolExecutable(resolved.Tool)})
 
 	// Note: We don't automatically stop containers on exit to allow inspection
 	// Users can manually stop with 'muster down' or 'docker compose down'

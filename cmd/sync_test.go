@@ -2,10 +2,17 @@ package cmd
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/abenz1267/muster/internal/ai"
+	"github.com/abenz1267/muster/internal/coding"
+	"github.com/abenz1267/muster/internal/roadmap"
 	"github.com/abenz1267/muster/internal/testutil"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -953,4 +960,374 @@ func TestSyncCommand_AIFuzzyMatching_InvalidSlug(t *testing.T) {
 	// Verify output shows added item (invalid match was skipped)
 	output := buf.String()
 	assert.Contains(t, output, "Added: 1", "output should show 1 added item")
+}
+
+func TestSyncWithMockAI_FuzzyMatching(t *testing.T) {
+	// Test sync with mock AI fuzzy matching: provide source and target roadmaps
+	// with unmatched items, mock response returns match results JSON, verify
+	// items matched and updated.
+
+	// Save original factory and restore at end
+	originalFactory := codingToolFactory
+	defer func() { codingToolFactory = originalFactory }()
+
+	// Create temp directory
+	tmpDir := t.TempDir()
+
+	// Create source roadmap with renamed items
+	sourceRM := &roadmap.Roadmap{
+		Items: []roadmap.RoadmapItem{
+			{
+				Slug:     "feature-refactored",
+				Title:    "Feature Refactored",
+				Priority: roadmap.PriorityHigh,
+				Status:   roadmap.StatusInProgress,
+				Context:  "Refactored version of the feature",
+			},
+		},
+	}
+	sourcePath := filepath.Join(tmpDir, "source.json")
+	sourceData, err := json.MarshalIndent(sourceRM, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(sourcePath, append(sourceData, '\n'), 0644)) //nolint:gosec // G306: Test file
+
+	// Create target roadmap with old slug
+	targetRM := &roadmap.Roadmap{
+		Items: []roadmap.RoadmapItem{
+			{
+				Slug:     "old-feature",
+				Title:    "Old Feature",
+				Priority: roadmap.PriorityMedium,
+				Status:   roadmap.StatusPlanned,
+				Context:  "Original feature",
+			},
+		},
+	}
+	targetPath := filepath.Join(tmpDir, "target.json")
+	targetData, err := json.MarshalIndent(targetRM, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(targetPath, append(targetData, '\n'), 0644)) //nolint:gosec // G306: Test file
+
+	// Mock AI response with high confidence match
+	mockMatchResponse := `[
+		{
+			"source_slug": "feature-refactored",
+			"target_slug": "old-feature",
+			"confidence": 0.85,
+			"reason": "Same feature, renamed during refactoring"
+		}
+	]`
+
+	// Replace factory with mock
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForSyncTest{
+			response: mockMatchResponse,
+		}, nil
+	}
+
+	// Change to temp dir for config resolution
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Create minimal config
+	musterDir := filepath.Join(tmpDir, ".muster")
+	require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory
+	configContent := "defaults:\n  tool: test-tool\n  provider: mock\n  model: test-model\n"
+	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(configContent), 0644)) //nolint:gosec // G306: Test file
+
+	// Execute sync
+	cmd := &cobra.Command{
+		Use:  "sync",
+		RunE: syncCmd.RunE,
+	}
+	cmd.Flags().String("source", sourcePath, "Source roadmap file path")
+	cmd.Flags().String("target", targetPath, "Target roadmap file path")
+	cmd.Flags().Bool("yes", false, "Accept all AI matches without confirmation")
+	cmd.Flags().Bool("dry-run", false, "Preview changes without saving")
+	cmd.Flags().Bool("delete", false, "Delete target items not matched by any source item")
+	cmd.Flags().Bool("verbose", false, "Enable verbose output")
+
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cmd.SetArgs([]string{"--source", sourcePath, "--target", targetPath})
+	err = cmd.Execute()
+	require.NoError(t, err, "sync should succeed with mock AI")
+
+	// Verify target was updated with source data
+	updatedRM, err := roadmap.LoadRoadmapFile(targetPath)
+	require.NoError(t, err)
+	require.Len(t, updatedRM.Items, 1, "target should have 1 item")
+
+	// Verify the item was updated (kept target slug, updated other fields from source)
+	item := updatedRM.Items[0]
+	assert.Equal(t, "old-feature", item.Slug, "slug should be preserved")
+	assert.Equal(t, "Feature Refactored", item.Title, "title should be updated from source")
+	assert.Equal(t, roadmap.PriorityHigh, item.Priority, "priority should be updated from source")
+	assert.Equal(t, roadmap.StatusInProgress, item.Status, "status should be updated from source")
+
+	// Verify output shows update
+	output := buf.String()
+	assert.Contains(t, output, "Updated: 1", "output should show 1 updated item")
+}
+
+func TestSyncWithMockAI_FailureFallback(t *testing.T) {
+	// Test AI failure fallback: mock returns error, verify sync continues
+	// with exact matches only.
+
+	// Save original factory and restore at end
+	originalFactory := codingToolFactory
+	defer func() { codingToolFactory = originalFactory }()
+
+	// Create temp directory
+	tmpDir := t.TempDir()
+
+	// Create source roadmap
+	sourceRM := &roadmap.Roadmap{
+		Items: []roadmap.RoadmapItem{
+			{
+				Slug:     "exact-match",
+				Title:    "Exact Match Feature",
+				Priority: roadmap.PriorityHigh,
+				Status:   roadmap.StatusInProgress,
+				Context:  "Updated content",
+			},
+			{
+				Slug:     "new-feature",
+				Title:    "New Feature",
+				Priority: roadmap.PriorityMedium,
+				Status:   roadmap.StatusPlanned,
+				Context:  "New item",
+			},
+		},
+	}
+	sourcePath := filepath.Join(tmpDir, "source.json")
+	sourceData, err := json.MarshalIndent(sourceRM, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(sourcePath, append(sourceData, '\n'), 0644)) //nolint:gosec // G306: Test file
+
+	// Create target roadmap with one matching slug
+	targetRM := &roadmap.Roadmap{
+		Items: []roadmap.RoadmapItem{
+			{
+				Slug:     "exact-match",
+				Title:    "Old Title",
+				Priority: roadmap.PriorityLow,
+				Status:   roadmap.StatusPlanned,
+				Context:  "Old content",
+			},
+		},
+	}
+	targetPath := filepath.Join(tmpDir, "target.json")
+	targetData, err := json.MarshalIndent(targetRM, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(targetPath, append(targetData, '\n'), 0644)) //nolint:gosec // G306: Test file
+
+	// Replace factory with mock that returns error
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForSyncTest{
+			returnError: true,
+		}, nil
+	}
+
+	// Change to temp dir for config resolution
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Create minimal config
+	musterDir := filepath.Join(tmpDir, ".muster")
+	require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory
+	configContent := "defaults:\n  tool: test-tool\n  provider: mock\n  model: test-model\n"
+	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(configContent), 0644)) //nolint:gosec // G306: Test file
+
+	// Execute sync
+	cmd := &cobra.Command{
+		Use:  "sync",
+		RunE: syncCmd.RunE,
+	}
+	cmd.Flags().String("source", sourcePath, "Source roadmap file path")
+	cmd.Flags().String("target", targetPath, "Target roadmap file path")
+	cmd.Flags().Bool("yes", false, "Accept all AI matches without confirmation")
+	cmd.Flags().Bool("dry-run", false, "Preview changes without saving")
+	cmd.Flags().Bool("delete", false, "Delete target items not matched by any source item")
+	cmd.Flags().Bool("verbose", false, "Enable verbose output")
+
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cmd.SetArgs([]string{"--source", sourcePath, "--target", targetPath})
+	err = cmd.Execute()
+	require.NoError(t, err, "sync should succeed with exact matches despite AI failure")
+
+	// Verify exact match was updated and new item was added
+	updatedRM, err := roadmap.LoadRoadmapFile(targetPath)
+	require.NoError(t, err)
+	assert.Len(t, updatedRM.Items, 2, "target should have 2 items")
+
+	// Find exact-match item (should be updated)
+	var exactMatch *roadmap.RoadmapItem
+	var newFeature *roadmap.RoadmapItem
+	for i := range updatedRM.Items {
+		if updatedRM.Items[i].Slug == "exact-match" {
+			exactMatch = &updatedRM.Items[i]
+		}
+		if updatedRM.Items[i].Slug == "new-feature" {
+			newFeature = &updatedRM.Items[i]
+		}
+	}
+
+	require.NotNil(t, exactMatch, "exact-match should exist")
+	assert.Equal(t, "Exact Match Feature", exactMatch.Title, "exact-match should be updated")
+	assert.Equal(t, roadmap.PriorityHigh, exactMatch.Priority)
+
+	require.NotNil(t, newFeature, "new-feature should be added")
+	assert.Equal(t, "New Feature", newFeature.Title)
+
+	// Verify output shows 1 update and 1 add
+	output := buf.String()
+	assert.Contains(t, output, "Updated: 1", "output should show 1 updated item")
+	assert.Contains(t, output, "Added: 1", "output should show 1 added item")
+}
+
+// mockCodingToolForSyncTest is a mock implementation for sync command tests
+type mockCodingToolForSyncTest struct {
+	response    string
+	returnError bool
+}
+
+func (m *mockCodingToolForSyncTest) Invoke(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+	if m.returnError {
+		return nil, fmt.Errorf("mock AI service error")
+	}
+	return &ai.InvokeResult{
+		RawOutput: m.response,
+	}, nil
+}
+
+func TestSyncCommand_ContextCancellation(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create source roadmap
+	sourceContent := `{
+  "items": [
+    {
+      "slug": "feature-a",
+      "title": "Feature A",
+      "priority": "high",
+      "status": "planned",
+      "context": "Source feature"
+    }
+  ]
+}`
+	sourcePath := filepath.Join(tmpDir, "source.json")
+	require.NoError(t, os.WriteFile(sourcePath, []byte(sourceContent), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Create target roadmap
+	targetContent := `{
+  "items": [
+    {
+      "slug": "feature-x",
+      "title": "Feature X",
+      "priority": "medium",
+      "status": "planned",
+      "context": "Target feature"
+    }
+  ]
+}`
+	targetPath := filepath.Join(tmpDir, "target.json")
+	require.NoError(t, os.WriteFile(targetPath, []byte(targetContent), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Save original factory
+	originalFactory := codingToolFactory
+	defer func() { codingToolFactory = originalFactory }()
+
+	// Track whether context cancellation was detected by the mock
+	var contextCanceled bool
+
+	// Create a mock that respects context cancellation with delay
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolWithDelayForSync{
+			delay: 200 * time.Millisecond,
+			onContextCancel: func() {
+				contextCanceled = true
+			},
+		}, nil
+	}
+
+	// Change to temp dir for config resolution
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Create minimal config
+	musterDir := filepath.Join(tmpDir, ".muster")
+	require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory
+	configContent := "defaults:\n  tool: test-tool\n  provider: mock\n  model: test-model\n"
+	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(configContent), 0644)) //nolint:gosec // G306: Test file
+
+	// Create context with short timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	// Execute sync with canceled context
+	cmd := &cobra.Command{
+		Use:  "sync",
+		RunE: syncCmd.RunE,
+	}
+	cmd.SetContext(ctx)
+	cmd.Flags().String("source", sourcePath, "Source roadmap file path")
+	cmd.Flags().String("target", targetPath, "Target roadmap file path")
+	cmd.Flags().Bool("yes", false, "Accept all AI matches without confirmation")
+	cmd.Flags().Bool("dry-run", false, "Preview changes without saving")
+	cmd.Flags().Bool("delete", false, "Delete target items not matched by any source item")
+	cmd.Flags().Bool("verbose", false, "Enable verbose output")
+
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cmd.SetArgs([]string{"--source", sourcePath, "--target", targetPath})
+
+	// Measure time to ensure timeout is respected
+	start := time.Now()
+	_ = cmd.Execute() // err is intentionally ignored - sync handles AI errors gracefully
+	elapsed := time.Since(start)
+
+	// The sync command handles AI errors gracefully, so it may not fail.
+	// However, we can verify that:
+	// 1. The operation completed quickly (respecting timeout)
+	// 2. The mock detected the context cancellation
+	assert.Less(t, elapsed, 150*time.Millisecond, "should timeout quickly, not wait for full delay")
+	assert.True(t, contextCanceled, "mock should have detected context cancellation")
+
+	// Note: sync command handles AI failures gracefully and continues,
+	// so we don't check the error. The key is that context cancellation was detected.
+}
+
+// mockCodingToolWithDelayForSync simulates a slow AI tool that respects context cancellation
+type mockCodingToolWithDelayForSync struct {
+	delay           time.Duration
+	onContextCancel func()
+}
+
+func (m *mockCodingToolWithDelayForSync) Invoke(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+	// Simulate slow operation that respects context
+	select {
+	case <-time.After(m.delay):
+		return &ai.InvokeResult{
+			RawOutput: `[]`,
+		}, nil
+	case <-ctx.Done():
+		if m.onContextCancel != nil {
+			m.onContextCancel()
+		}
+		return nil, ctx.Err()
+	}
 }

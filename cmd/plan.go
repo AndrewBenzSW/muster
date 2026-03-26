@@ -2,16 +2,17 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/abenz1267/muster/internal/coding"
 	"github.com/abenz1267/muster/internal/config"
 	"github.com/abenz1267/muster/internal/prompt"
 	"github.com/abenz1267/muster/internal/roadmap"
@@ -32,35 +33,6 @@ This command:
 If no slug is provided, shows an interactive picker to select an item.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runPlan,
-}
-
-// planInvoker is the function variable for invoking Claude Code during planning.
-// Replaceable variable for testability (matching the vcsFactory pattern from cmd/out.go).
-var planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-	// Build command — interactive mode (no -p/--print) so the user collaborates with Claude
-	cmdArgs := []string{"--plugin-dir", tmpDir, "--model", resolved.Model}
-	execCmd := exec.Command(config.ToolExecutable(resolved.Tool), cmdArgs...) //nolint:gosec // G204: Tool path validated through config system
-
-	// Connect stdin/stdout/stderr for foreground execution
-	execCmd.Stdin = os.Stdin
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
-
-	// Apply environment overrides
-	envOverrides := config.ToolEnvOverrides(resolved, projectCfg, userCfg)
-	if len(envOverrides) > 0 {
-		execCmd.Env = os.Environ()
-		for k, v := range envOverrides {
-			execCmd.Env = append(execCmd.Env, k+"="+v)
-		}
-	}
-
-	// Run and check exit code
-	if err := execCmd.Run(); err != nil {
-		return fmt.Errorf("claude code invocation failed: %w", err)
-	}
-
-	return nil
 }
 
 func runPlan(cmd *cobra.Command, args []string) error {
@@ -179,7 +151,23 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintf(errOut, "\nPlanning session ready for %q (%s).\n", slug, item.Title)
 	_, _ = fmt.Fprintf(errOut, "Copy and paste this into the prompt to begin:\n\n")
 	_, _ = fmt.Fprintf(errOut, "  /%s:roadmap-plan-feature\n\n", pluginName)
-	if err := planInvoker(resolved, projectCfg, userCfg, tmpDir); err != nil {
+
+	tool, err := interactiveToolFactory()
+	if err != nil {
+		return fmt.Errorf("failed to create coding tool: %w", err)
+	}
+
+	runCtx := cmd.Context()
+	if runCtx == nil {
+		runCtx = context.Background()
+	}
+
+	if err := tool.RunInteractive(runCtx, coding.InteractiveConfig{
+		Tool:      config.ToolExecutable(resolved.Tool),
+		Model:     resolved.Model,
+		PluginDir: tmpDir,
+		Env:       config.ToolEnvOverrides(resolved, projectCfg, userCfg),
+	}); err != nil {
 		return err
 	}
 

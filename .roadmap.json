@@ -1,13 +1,6 @@
 {
   "items": [
     {
-      "slug": "interface-refactor",
-      "title": "CodingTool and ContainerRuntime interface abstractions",
-      "priority": "high",
-      "status": "in_progress",
-      "context": "Define CodingTool interface (Invoke, Launch, Name, ContainerSetup) in internal/tool/. Implement claudecode (extracted from internal/ai/ and cmd/code.go), opencode (stub), and testcode (file-based mock using .muster/testcode/ directory). Define ContainerRuntime interface (Up, Down, Exec, List, Ping) in internal/docker/. Refactor docker.Client to satisfy it. Add MockRuntime (file-based using .muster/mockdocker/). Migrate cmd/code.go, cmd/add.go, cmd/sync.go to use CodingTool. Refactor compose generation to use ContainerRequirements from CodingTool.ContainerSetup() instead of hardcoded Claude knowledge. Relocate ai.ExtractJSON to internal/tool/. Thread context.Context through calling commands. See docs/2026-03-24-interface-refactor-and-pipeline-decomposition-design.md."
-    },
-    {
       "slug": "pipeline-skeleton",
       "title": "Pipeline state machine, checkpoint, and --next/--step flags",
       "priority": "high",

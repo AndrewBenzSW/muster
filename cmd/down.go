@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/abenz1267/muster/internal/docker"
+	"github.com/abenz1267/muster/internal/roadmap"
 	"github.com/spf13/cobra"
 )
 
@@ -63,17 +64,17 @@ Examples:
 			fmt.Fprintf(os.Stderr, "Project: %s\n", project)
 		}
 
-		// Create Docker client
-		client, err := docker.NewClient()
+		// Create Docker runtime
+		runtime, err := containerRuntimeFactory()
 		if err != nil {
-			return fmt.Errorf("failed to create Docker client: %w", err)
+			return fmt.Errorf("failed to create Docker runtime: %w", err)
 		}
-		defer func() { _ = client.Close() }()
+		defer func() { _ = runtime.Close() }()
 
 		// Check Docker is running
 		pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
-		if err := client.Ping(pingCtx); err != nil {
+		if err := runtime.Ping(pingCtx); err != nil {
 			return fmt.Errorf("docker check failed: %w", err)
 		}
 
@@ -82,7 +83,7 @@ Examples:
 
 		if orphans {
 			// Find orphaned containers
-			containersToStop, err = findOrphanContainers(ctx, client, project, verbose)
+			containersToStop, err = findOrphanContainers(ctx, runtime, project, verbose)
 			if err != nil {
 				return fmt.Errorf("failed to find orphaned containers: %w", err)
 			}
@@ -90,7 +91,7 @@ Examples:
 			// Stop all containers for the project
 			listCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
-			containersToStop, err = client.ListContainers(listCtx, project, "")
+			containersToStop, err = runtime.ListContainers(listCtx, project, "")
 			if err != nil {
 				return fmt.Errorf("failed to list containers: %w", err)
 			}
@@ -99,7 +100,7 @@ Examples:
 			slug := args[0]
 			listCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
-			containersToStop, err = client.ListContainers(listCtx, project, slug)
+			containersToStop, err = runtime.ListContainers(listCtx, project, slug)
 			if err != nil {
 				return fmt.Errorf("failed to list containers for slug %q: %w", slug, err)
 			}
@@ -141,7 +142,7 @@ Examples:
 				// Use compose down
 				downCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 				defer cancel()
-				if err := client.ComposeDown(downCtx, composePath, proj); err != nil {
+				if err := runtime.ComposeDown(downCtx, composePath, proj); err != nil {
 					fmt.Fprintf(os.Stderr, "Warning: docker compose down failed for project %s: %v\n", proj, err)
 					// Continue to try stopping individual containers
 				} else {
@@ -169,11 +170,11 @@ Examples:
 
 // findOrphanContainers finds containers whose slugs are no longer in_progress in the roadmap.
 // Per S3: ignores containers < 1 hour old (using muster.created label).
-func findOrphanContainers(ctx context.Context, client *docker.Client, project string, verbose bool) ([]docker.ContainerInfo, error) {
+func findOrphanContainers(ctx context.Context, runtime docker.ContainerRuntime, project string, verbose bool) ([]docker.ContainerInfo, error) {
 	// List all containers for the project
 	listCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	allContainers, err := client.ListContainers(listCtx, project, "")
+	allContainers, err := runtime.ListContainers(listCtx, project, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
@@ -259,13 +260,13 @@ func loadInProgressSlugs() (map[string]bool, error) {
 
 	// Parse roadmap JSON
 	// Support both array format and wrapper format
-	var items []RoadmapItem
+	var items []roadmap.RoadmapItem
 
 	// Try array format first
 	if err := json.Unmarshal(data, &items); err != nil {
 		// Try wrapper format
 		var wrapper struct {
-			Items []RoadmapItem `json:"items"`
+			Items []roadmap.RoadmapItem `json:"items"`
 		}
 		if err := json.Unmarshal(data, &wrapper); err != nil {
 			return nil, fmt.Errorf("failed to parse roadmap.json: %w", err)
@@ -282,14 +283,6 @@ func loadInProgressSlugs() (map[string]bool, error) {
 	}
 
 	return inProgress, nil
-}
-
-// RoadmapItem represents a single item in the roadmap.
-type RoadmapItem struct {
-	Slug     string `json:"slug"`
-	Status   string `json:"status"`
-	Title    string `json:"title,omitempty"`
-	Priority string `json:"priority,omitempty"`
 }
 
 // mapKeys returns the keys of a map as a slice (for debugging).

@@ -31,7 +31,7 @@ type InvokeResult struct {
 // InvokeAI is a package-level variable that holds the AI invocation function.
 // It is exposed as a variable (rather than a direct function) to allow tests
 // to replace it with a mock implementation for testing purposes.
-var InvokeAI = invokeAI
+var InvokeAI func(context.Context, InvokeConfig) (*InvokeResult, error) = invokeAI
 
 // invokeAI invokes an AI tool with a single-shot skill file staged in a temp directory.
 // The function stages the prompt as a SKILL.md file, executes the tool with --print and
@@ -50,7 +50,7 @@ var InvokeAI = invokeAI
 //   - timeout after configured duration (default: 60 seconds)
 //
 // If Verbose is true, prints the tool command and resolved config to stderr.
-func invokeAI(cfg InvokeConfig) (*InvokeResult, error) {
+func invokeAI(ctx context.Context, cfg InvokeConfig) (*InvokeResult, error) {
 	// Validate config
 	if cfg.Tool == "" {
 		return nil, errors.New("tool cannot be empty")
@@ -90,8 +90,22 @@ func invokeAI(cfg InvokeConfig) (*InvokeResult, error) {
 		timeout = 120 * time.Second
 	}
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	// Create context with timeout, using the passed ctx as parent.
+	// If ctx already has a deadline shorter than cfg.Timeout, use ctx's deadline.
+	var cancel context.CancelFunc
+	if existingDeadline, ok := ctx.Deadline(); ok {
+		remainingTime := time.Until(existingDeadline)
+		if remainingTime < timeout {
+			// Use existing context deadline
+			ctx, cancel = context.WithCancel(ctx)
+		} else {
+			// Apply configured timeout
+			ctx, cancel = context.WithTimeout(ctx, timeout)
+		}
+	} else {
+		// No existing deadline, apply configured timeout
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	}
 	defer cancel()
 
 	// Build command: tool --print --plugin-dir tmpDir [--model model]

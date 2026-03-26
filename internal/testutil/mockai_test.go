@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -26,7 +27,7 @@ func TestMockInvokeAI_BasicUsage(t *testing.T) {
 		Prompt: "test prompt",
 	}
 
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, `{"result": "mocked"}`, result.RawOutput)
 }
@@ -41,7 +42,7 @@ func TestMockInvokeAI_WithError(t *testing.T) {
 		Prompt: "test prompt",
 	}
 
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Equal(t, expectedErr, err)
@@ -71,22 +72,22 @@ func TestMockInvokeAIWithQueue_MultipleResponses(t *testing.T) {
 	}
 
 	// First call
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "first", result.RawOutput)
 
 	// Second call
-	result, err = ai.InvokeAI(cfg)
+	result, err = ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "second", result.RawOutput)
 
 	// Third call
-	result, err = ai.InvokeAI(cfg)
+	result, err = ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "third", result.RawOutput)
 
 	// Fourth call (queue exhausted, returns last response)
-	result, err = ai.InvokeAI(cfg)
+	result, err = ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "third", result.RawOutput)
 }
@@ -106,18 +107,18 @@ func TestMockInvokeAIWithQueue_WithErrors(t *testing.T) {
 	}
 
 	// First call succeeds
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "success", result.RawOutput)
 
 	// Second call fails
-	result, err = ai.InvokeAI(cfg)
+	result, err = ai.InvokeAI(context.Background(), cfg)
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Equal(t, expectedErr, err)
 
 	// Third call succeeds
-	result, err = ai.InvokeAI(cfg)
+	result, err = ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "success again", result.RawOutput)
 }
@@ -135,13 +136,13 @@ func TestGetInvokeCount_TracksInvocations(t *testing.T) {
 	}
 
 	// Make multiple calls
-	_, _ = ai.InvokeAI(cfg)
+	_, _ = ai.InvokeAI(context.Background(), cfg)
 	assert.Equal(t, int32(1), GetInvokeCount())
 
-	_, _ = ai.InvokeAI(cfg)
+	_, _ = ai.InvokeAI(context.Background(), cfg)
 	assert.Equal(t, int32(2), GetInvokeCount())
 
-	_, _ = ai.InvokeAI(cfg)
+	_, _ = ai.InvokeAI(context.Background(), cfg)
 	assert.Equal(t, int32(3), GetInvokeCount())
 
 	// Reset counter
@@ -158,7 +159,7 @@ func TestNewMockAITool_CreatesWorkingBinary(t *testing.T) {
 
 	// Test with ai.InvokeAI
 	cfg := mock.InvokeConfig(t, "test prompt")
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, `{"mock": "response"}`, result.RawOutput)
 }
@@ -170,7 +171,7 @@ func TestMockAITool_WithError(t *testing.T) {
 	errorMock := mock.WithError(42, "error message")
 	cfg := errorMock.InvokeConfig(t, "test prompt")
 
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "42")
@@ -184,7 +185,7 @@ func TestMockAITool_WithDelay(t *testing.T) {
 	cfg := delayMock.InvokeConfig(t, "test prompt")
 
 	start := time.Now()
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	duration := time.Since(start)
 
 	require.NoError(t, err)
@@ -202,7 +203,7 @@ func TestMockAITool_ChainedModifiers(t *testing.T) {
 	cfg := modifiedMock.InvokeConfig(t, "test prompt")
 
 	start := time.Now()
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	duration := time.Since(start)
 
 	require.Error(t, err)
@@ -245,7 +246,7 @@ func TestMockBinary_ModelFlagPassthrough(t *testing.T) {
 	cfg := mock.InvokeConfig(t, "test prompt")
 	cfg.Model = "gpt-4"
 
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 
 	// Verify the mock binary doesn't error when --model flag is passed
@@ -261,7 +262,7 @@ func TestMockBinary_SkillFileContent(t *testing.T) {
 	testPrompt := "Test skill content for validation"
 	cfg := mock.InvokeConfig(t, testPrompt)
 
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 
 	// Verify the mock binary reads the skill file successfully
@@ -320,17 +321,17 @@ func TestMockInvokeAIWithQueue_HeavyUsageAfterExhaustion(t *testing.T) {
 	}
 
 	// Consume the queue (2 items)
-	result, err := ai.InvokeAI(cfg)
+	result, err := ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "first", result.RawOutput)
 
-	result, err = ai.InvokeAI(cfg)
+	result, err = ai.InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "second", result.RawOutput)
 
 	// Make 50+ calls after exhaustion
 	for i := 0; i < 55; i++ {
-		result, err = ai.InvokeAI(cfg)
+		result, err = ai.InvokeAI(context.Background(), cfg)
 		require.NoError(t, err, "call %d after exhaustion should not panic or error", i+1)
 		assert.Equal(t, "second", result.RawOutput, "call %d should return last response", i+1)
 	}
@@ -350,7 +351,7 @@ func TestMockInvokeAIWithQueue_SingleItemManyCallsStability(t *testing.T) {
 
 	// Call 100 times - all should return the same response
 	for i := 0; i < 100; i++ {
-		result, err := ai.InvokeAI(cfg)
+		result, err := ai.InvokeAI(context.Background(), cfg)
 		require.NoError(t, err, "call %d should not panic or error", i+1)
 		assert.Equal(t, "only", result.RawOutput, "call %d should return single response", i+1)
 	}
@@ -392,7 +393,7 @@ func TestMockInvokeAI_ConcurrentAccessDocumentsLimitation(t *testing.T) {
 			}
 
 			// Try to use the mock
-			_, _ = ai.InvokeAI(cfg)
+			_, _ = ai.InvokeAI(context.Background(), cfg)
 			done <- true
 		}(i)
 	}

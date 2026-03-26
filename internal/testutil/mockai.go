@@ -18,17 +18,18 @@
 //
 //	cleanup := testutil.MockInvokeAI("mock response", nil)
 //	defer cleanup()
-//	result, _ := ai.InvokeAI(ai.InvokeConfig{Prompt: "test"})
+//	result, _ := ai.InvokeAI(context.Background(), ai.InvokeConfig{Prompt: "test"})
 //	fmt.Println(result.RawOutput) // "mock response"
 //
 // Example (binary):
 //
 //	mock := testutil.NewMockAITool(t, `{"success": true}`)
 //	cfg := mock.InvokeConfig(t, "test prompt")
-//	result, _ := ai.InvokeAI(cfg)
+//	result, _ := ai.InvokeAI(context.Background(), cfg)
 package testutil
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -72,12 +73,12 @@ var mockBinaryErr error
 //
 //	cleanup := testutil.MockInvokeAI("mock response", nil)
 //	defer cleanup()
-//	result, _ := ai.InvokeAI(ai.InvokeConfig{Prompt: "test"})
+//	result, _ := ai.InvokeAI(context.Background(), ai.InvokeConfig{Prompt: "test"})
 //	assert.Equal(t, "mock response", result.RawOutput)
 func MockInvokeAI(response string, err error) func() {
 	original := ai.InvokeAI
 
-	ai.InvokeAI = func(cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+	ai.InvokeAI = func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
 		invokeCounter.Add(1)
 		if err != nil {
 			return nil, err
@@ -127,7 +128,7 @@ func MockInvokeAIWithQueue(responses ...MockResponse) func() {
 	original := ai.InvokeAI
 	var callIndex atomic.Int32
 
-	ai.InvokeAI = func(cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+	ai.InvokeAI = func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
 		invokeCounter.Add(1)
 		idx := int(callIndex.Add(1)) - 1
 
@@ -327,7 +328,7 @@ type MockAITool struct {
 //
 //	mock := testutil.NewMockAITool(t, `{"result": "success"}`)
 //	cfg := mock.InvokeConfig(t, "test prompt")
-//	result, err := ai.InvokeAI(cfg)
+//	result, err := ai.InvokeAI(context.Background(), cfg)
 func NewMockAITool(t *testing.T, response string) *MockAITool {
 	t.Helper()
 
@@ -359,7 +360,7 @@ func NewMockAITool(t *testing.T, response string) *MockAITool {
 //
 //	mock := testutil.NewMockAITool(t, "").WithError(1, "connection failed")
 //	cfg := mock.InvokeConfig(t, "test")
-//	_, err := ai.InvokeAI(cfg) // returns error with stderr in output
+//	_, err := ai.InvokeAI(context.Background(), cfg) // returns error with stderr in output
 func (m *MockAITool) WithError(exitCode int, stderr string) *MockAITool {
 	copy := *m
 	copy.exitCode = exitCode
@@ -380,7 +381,7 @@ func (m *MockAITool) WithError(exitCode int, stderr string) *MockAITool {
 //	mock := testutil.NewMockAITool(t, "slow").WithDelay(100 * time.Millisecond)
 //	cfg := mock.InvokeConfig(t, "test")
 //	start := time.Now()
-//	ai.InvokeAI(cfg)
+//	ai.InvokeAI(context.Background(), cfg)
 //	assert.True(t, time.Since(start) >= 100*time.Millisecond)
 func (m *MockAITool) WithDelay(duration time.Duration) *MockAITool {
 	copy := *m
@@ -409,7 +410,7 @@ func (m *MockAITool) Path() string {
 //
 //	mock := testutil.NewMockAITool(t, `{"status": "ok"}`)
 //	cfg := mock.InvokeConfig(t, "analyze this code")
-//	result, err := ai.InvokeAI(cfg)
+//	result, err := ai.InvokeAI(context.Background(), cfg)
 func (m *MockAITool) InvokeConfig(t *testing.T, prompt string) ai.InvokeConfig {
 	t.Helper()
 

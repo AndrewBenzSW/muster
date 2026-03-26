@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/abenz1267/muster/internal/ai"
+	"github.com/abenz1267/muster/internal/coding"
 	"github.com/abenz1267/muster/internal/config"
 	"github.com/abenz1267/muster/internal/prompt"
 	"github.com/abenz1267/muster/internal/roadmap"
@@ -86,6 +88,12 @@ By default, syncs from .roadmap.json to .muster/roadmap.json`,
 			fmt.Fprintf(os.Stderr, "Target: %s\n", targetPath)
 		}
 
+		// Create coding tool via factory
+		tool, err := codingToolFactory()
+		if err != nil {
+			return fmt.Errorf("failed to create coding tool: %w", err)
+		}
+
 		// Load source roadmap directly (not using fallback chain)
 		sourceRoadmap, err := roadmap.LoadRoadmapFile(sourcePath)
 		if err != nil {
@@ -107,12 +115,18 @@ By default, syncs from .roadmap.json to .muster/roadmap.json`,
 		}
 
 		// Perform sync algorithm
+		cmdCtx := cmd.Context()
+		if cmdCtx == nil {
+			cmdCtx = context.Background()
+		}
 		updated, added, deleted, err := performSync(
+			cmdCtx,
 			sourceRoadmap,
 			targetRoadmap,
 			resolved,
 			projectCfg,
 			userCfg,
+			tool,
 			deleteFlag,
 			yesFlag,
 			verbose,
@@ -158,11 +172,13 @@ type MatchResult struct {
 
 // performSync executes the sync algorithm and returns counts of updated, added, deleted items
 func performSync(
+	cmdCtx context.Context,
 	sourceRoadmap *roadmap.Roadmap,
 	targetRoadmap *roadmap.Roadmap,
 	resolved *config.ResolvedConfig,
 	projectCfg *config.ProjectConfig,
 	userCfg *config.UserConfig,
+	codingTool coding.CodingTool,
 	deleteFlag bool,
 	yesFlag bool,
 	verbose bool,
@@ -232,7 +248,7 @@ func performSync(
 		}
 
 		// Invoke AI
-		aiResult, err := ai.InvokeAI(ai.InvokeConfig{
+		aiResult, err := codingTool.Invoke(cmdCtx, ai.InvokeConfig{
 			Tool:    config.ToolExecutable(resolved.Tool),
 			Model:   resolved.Model,
 			Prompt:  promptContent,

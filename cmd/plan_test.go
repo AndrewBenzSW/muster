@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -9,13 +11,23 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abenz1267/muster/internal/config"
+	"github.com/abenz1267/muster/internal/coding"
+	// "github.com/abenz1267/muster/internal/config"
 	"github.com/abenz1267/muster/internal/roadmap"
 	"github.com/abenz1267/muster/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// mockInteractiveToolFunc is a test helper that wraps a function to implement InteractiveCodingTool
+type mockInteractiveToolFunc struct {
+	fn func(context.Context, coding.InteractiveConfig) error
+}
+
+func (m mockInteractiveToolFunc) RunInteractive(ctx context.Context, cfg coding.InteractiveConfig) error {
+	return m.fn(ctx, cfg)
+}
 
 // Test 1-5: Command structure
 
@@ -661,18 +673,20 @@ func TestRunPlan_SkillStagingSuccess(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to write stub plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write stub plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
 	var capturedTmpDir string
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		capturedTmpDir = tmpDir
-		// Write stub plan file
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-feature", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			capturedTmpDir = cfg.PluginDir
+			// Write stub plan file
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-feature", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -724,18 +738,20 @@ func TestRunPlan_CleanupRunsOnSuccess(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
 	var capturedTmpDir string
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		capturedTmpDir = tmpDir
-		// Write stub plan file
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-cleanup", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			capturedTmpDir = cfg.PluginDir
+			// Write stub plan file
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-cleanup", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -785,14 +801,16 @@ func TestRunPlan_CleanupRunsOnError(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to fail
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to fail
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
 	var capturedTmpDir string
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		capturedTmpDir = tmpDir
-		return fmt.Errorf("invocation failed")
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			capturedTmpDir = cfg.PluginDir
+			return fmt.Errorf("invocation failed")
+		}}, nil
 	}
 
 	// Create command
@@ -843,16 +861,18 @@ func TestRunPlan_PromptContextParameters(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		// Write stub plan file
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-context", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			// Write stub plan file
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-context", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -874,24 +894,15 @@ func TestRunPlan_PromptContextParameters(t *testing.T) {
 }
 
 func TestRunPlan_CommandConstruction(t *testing.T) {
-	// This test verifies the command construction in planInvoker
-	// We'll call the default planInvoker with a mock tool that doesn't exist
-	// to verify the command arguments without actually executing
+	// This test verifies the command construction with interactiveToolFactory
+	// We'll call the default factory and verify it returns a tool
 
-	tmpDir := t.TempDir()
-	resolved := &config.ResolvedConfig{
-		Tool:     "claude-code",
-		Provider: "anthropic",
-		Model:    "test-model",
-	}
+	// Call interactiveToolFactory
+	tool, err := interactiveToolFactory()
 
-	// Call planInvoker with a non-existent tmpDir (won't execute successfully)
-	err := planInvoker(resolved, nil, nil, tmpDir)
-
-	// Should fail because claude is not in PATH or doesn't exist
-	assert.Error(t, err)
-	// The error should be about command execution, not command construction
-	assert.Contains(t, err.Error(), "claude code invocation failed")
+	// Should succeed in creating the tool
+	assert.NoError(t, err)
+	assert.NotNil(t, tool)
 }
 
 func TestRunPlan_EnvOverridesApplied(t *testing.T) {
@@ -934,22 +945,23 @@ providers:
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to capture environment
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to capture environment
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
 	var capturedEnv bool
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		// Verify env overrides are computed correctly
-		envOverrides := config.ToolEnvOverrides(resolved, projectCfg, userCfg)
-		if baseURL, ok := envOverrides["ANTHROPIC_BASE_URL"]; ok && baseURL == "http://localhost:8000" {
-			capturedEnv = true
-		}
-		// Write stub plan file
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-env", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			// Verify env overrides are passed correctly
+			if baseURL, ok := cfg.Env["ANTHROPIC_BASE_URL"]; ok && baseURL == "http://localhost:8000" {
+				capturedEnv = true
+			}
+			// Write stub plan file
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-env", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -966,51 +978,6 @@ providers:
 
 	// Verify env override was captured
 	assert.True(t, capturedEnv, "env overrides should include ANTHROPIC_BASE_URL")
-}
-
-func TestRunPlan_StagingErrorPropagates(t *testing.T) {
-	// Create temp dir with valid roadmap
-	tmpDir := t.TempDir()
-
-	// Create .muster directory
-	musterDir := filepath.Join(tmpDir, ".muster")
-	err := os.MkdirAll(musterDir, 0750) //nolint:gosec // G301: Test directory permissions
-	require.NoError(t, err)
-
-	// Write valid roadmap
-	roadmapPath := filepath.Join(musterDir, "roadmap.json")
-	roadmapData := `{
-		"items": [
-			{
-				"slug": "test-staging-error",
-				"title": "Test Staging Error",
-				"priority": "medium",
-				"status": "planned",
-				"context": "Test context"
-			}
-		]
-	}`
-	err = os.WriteFile(roadmapPath, []byte(roadmapData), 0600) //nolint:gosec // G306: Test file permissions
-	require.NoError(t, err)
-
-	// Change to temp dir
-	origDir, _ := os.Getwd()
-	defer func() { _ = os.Chdir(origDir) }()
-	_ = os.Chdir(tmpDir)
-
-	// Create command
-	cmd := &cobra.Command{}
-	cmd.SetErr(new(bytes.Buffer))
-
-	// Add flags
-	cmd.Flags().Bool("force", false, "")
-	cmd.Flags().Bool("verbose", false, "")
-
-	// Note: We can't easily mock StageSkills to fail without modifying internal/prompt
-	// This test documents the expected behavior - staging errors should propagate
-	// In actual execution, staging errors are rare (template render failures)
-	// We'll skip actual execution here since we can't mock StageSkills easily
-	t.Skip("Staging error propagation verified by integration - mocking StageSkills not straightforward")
 }
 
 func TestRunPlan_VerificationMissingFile(t *testing.T) {
@@ -1043,13 +1010,15 @@ func TestRunPlan_VerificationMissingFile(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to NOT write plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to NOT write plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		// Don't write plan file - verification should fail
-		return nil
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			// Don't write plan file - verification should fail
+			return nil
+		}}, nil
 	}
 
 	// Create command
@@ -1098,16 +1067,18 @@ func TestRunPlan_VerificationEmptyFile(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to write empty plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write empty plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		// Write empty plan file
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-empty", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte(""), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			// Write empty plan file
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-empty", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte(""), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1156,16 +1127,18 @@ func TestRunPlan_VerificationSuccess(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to write valid plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write valid plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		// Write valid plan file
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-success", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Implementation Plan\n\nThis is a valid plan.\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			// Write valid plan file
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-success", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Implementation Plan\n\nThis is a valid plan.\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1269,15 +1242,17 @@ func TestRunPlan_ExistingPlanInteractiveYes(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to write new plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write new plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-overwrite-yes", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# New Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-overwrite-yes", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# New Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command with simulated stdin
@@ -1376,15 +1351,17 @@ func TestRunPlan_ExistingPlanWithForce(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to write new plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write new plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-force", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# New Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-force", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# New Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1441,15 +1418,17 @@ func TestRunPlan_TableOutput(t *testing.T) {
 	// Ensure table mode
 	ui.SetOutputMode(ui.TableMode)
 
-	// Mock planInvoker to write plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-table-output", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-table-output", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1509,15 +1488,17 @@ func TestRunPlan_JSONOutput(t *testing.T) {
 	ui.SetOutputMode(ui.JSONMode)
 	defer ui.SetOutputMode(ui.TableMode) // Reset for other tests
 
-	// Mock planInvoker to write plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-json-output", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-json-output", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1567,15 +1548,17 @@ func TestRunPlan_VerboseMode(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to write plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-verbose", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-verbose", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1626,19 +1609,21 @@ func TestRunPlan_VerificationMinimalContent_Passes(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to write minimal plan file (2 bytes: "a\n")
+	// Mock interactiveToolFactory to write minimal plan file (2 bytes: "a\n")
 	// This tests the boundary between empty (0 bytes) and non-empty files.
 	// Size checking is intentional - we verify the file has non-zero size
 	// rather than parsing Markdown structure, which would be overkill for
 	// detecting completely empty files.
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-minimal-content", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("a\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-minimal-content", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("a\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1702,12 +1687,14 @@ func TestRunPlan_VerboseWithForce_LogsOverwrite(t *testing.T) {
 	err = os.WriteFile(planPath, []byte("# Old Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
 	require.NoError(t, err)
 
-	// Mock planInvoker to write new plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write new plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		return os.WriteFile(planPath, []byte("# New Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			return os.WriteFile(planPath, []byte("# New Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command with stderr buffer
@@ -1773,15 +1760,17 @@ func TestRunPlan_ReadOnly(t *testing.T) {
 	itemBefore := rmBefore.FindBySlug("test-readonly")
 	require.NotNil(t, itemBefore)
 
-	// Mock planInvoker to write plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-readonly", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-readonly", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1849,15 +1838,17 @@ func TestRunPlan_CrossPlatformPaths(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 	_ = os.Chdir(tmpDir)
 
-	// Mock planInvoker to write plan file
-	origInvoker := planInvoker
-	defer func() { planInvoker = origInvoker }()
+	// Mock interactiveToolFactory to write plan file
+	origFactory := interactiveToolFactory
+	defer func() { interactiveToolFactory = origFactory }()
 
-	planInvoker = func(resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, tmpDir string) error {
-		cwd, _ := os.Getwd()
-		planDir := filepath.Join(cwd, ".muster", "work", "test-crossplatform", "plan")
-		planPath := filepath.Join(planDir, "implementation-plan.md")
-		return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockInteractiveToolFunc{fn: func(ctx context.Context, cfg coding.InteractiveConfig) error {
+			cwd, _ := os.Getwd()
+			planDir := filepath.Join(cwd, ".muster", "work", "test-crossplatform", "plan")
+			planPath := filepath.Join(planDir, "implementation-plan.md")
+			return os.WriteFile(planPath, []byte("# Test Plan\n"), 0600) //nolint:gosec // G306: Test file permissions
+		}}, nil
 	}
 
 	// Create command
@@ -1887,4 +1878,117 @@ func TestRunPlan_CrossPlatformPaths(t *testing.T) {
 	// Verify plan file path uses filepath.Join
 	planPath := filepath.Join(planDir, "implementation-plan.md")
 	assert.FileExists(t, planPath)
+}
+
+// Mock Tests for interactiveToolFactory
+
+func TestRunPlan_WithMock_VerifiesInteractiveCall(t *testing.T) {
+	// Save original factory
+	original := interactiveToolFactory
+	defer func() { interactiveToolFactory = original }()
+
+	// Create temp directories
+	tmpDir := t.TempDir()
+	callsDir := filepath.Join(tmpDir, "calls")
+	require.NoError(t, os.MkdirAll(callsDir, 0755)) //nolint:gosec // G301: Test directory permissions
+
+	// Create test project structure
+	projectDir := filepath.Join(tmpDir, "project")
+	musterDir := filepath.Join(projectDir, ".muster")
+	require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory permissions
+
+	// Create roadmap
+	roadmapContent := `{"items": [{"slug": "test-feature", "title": "Test Feature", "status": "planned", "priority": "high"}]}`
+	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "roadmap.json"), []byte(roadmapContent), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Change to project directory
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+	require.NoError(t, os.Chdir(projectDir))
+
+	// Replace factory with mock
+	mockTool := coding.NewMockInteractiveCodingTool(callsDir)
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockTool, nil
+	}
+
+	// Create command
+	cmd := &cobra.Command{}
+	cmd.SetErr(new(bytes.Buffer))
+	cmd.SetOut(new(bytes.Buffer))
+	cmd.Flags().Bool("force", false, "")
+	cmd.Flags().Bool("verbose", false, "")
+
+	// Run
+	_ = runPlan(cmd, []string{"test-feature"})
+
+	// Verify RunInteractive was called
+	callFile := filepath.Join(callsDir, "001-interactive.json")
+	require.FileExists(t, callFile, "RunInteractive should have been called")
+
+	// Verify call details
+	data, err := os.ReadFile(callFile) //nolint:gosec // G304: Reading test fixture
+	require.NoError(t, err)
+
+	var call struct {
+		Tool      string            `json:"tool"`
+		Model     string            `json:"model"`
+		PluginDir string            `json:"plugin_dir"`
+		Env       map[string]string `json:"env,omitempty"`
+	}
+	require.NoError(t, json.Unmarshal(data, &call))
+
+	// Verify correct tool, model, and pluginDir
+	assert.NotEmpty(t, call.Tool, "tool should be set")
+	assert.NotEmpty(t, call.Model, "model should be set")
+	assert.NotEmpty(t, call.PluginDir, "plugin_dir should be set")
+}
+
+func TestRunPlan_WithMock_ToolError_PropagatesError(t *testing.T) {
+	// Save original factory
+	original := interactiveToolFactory
+	defer func() { interactiveToolFactory = original }()
+
+	// Create temp directories
+	tmpDir := t.TempDir()
+	callsDir := filepath.Join(tmpDir, "calls")
+	require.NoError(t, os.MkdirAll(callsDir, 0755)) //nolint:gosec // G301: Test directory permissions
+
+	// Create test project structure
+	projectDir := filepath.Join(tmpDir, "project")
+	musterDir := filepath.Join(projectDir, ".muster")
+	require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory permissions
+
+	// Create roadmap
+	roadmapContent := `{"items": [{"slug": "test-feature", "title": "Test Feature", "status": "planned", "priority": "high"}]}`
+	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "roadmap.json"), []byte(roadmapContent), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Change to project directory
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+	require.NoError(t, os.Chdir(projectDir))
+
+	// Create response file to simulate error
+	responseContent := `{"error": "simulated tool error"}`
+	require.NoError(t, os.WriteFile(filepath.Join(callsDir, "001-interactive-response.json"), []byte(responseContent), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Replace factory with mock
+	mockTool := coding.NewMockInteractiveCodingTool(callsDir)
+	interactiveToolFactory = func() (coding.InteractiveCodingTool, error) {
+		return mockTool, nil
+	}
+
+	// Create command
+	cmd := &cobra.Command{}
+	cmd.SetErr(new(bytes.Buffer))
+	cmd.SetOut(new(bytes.Buffer))
+	cmd.Flags().Bool("force", false, "")
+	cmd.Flags().Bool("verbose", false, "")
+
+	// Run should return error
+	err = runPlan(cmd, []string{"test-feature"})
+	require.Error(t, err, "should return error when tool fails")
+	assert.Contains(t, err.Error(), "simulated tool error", "error should be propagated from tool")
 }

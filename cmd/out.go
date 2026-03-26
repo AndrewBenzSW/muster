@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/abenz1267/muster/internal/ai"
+	"github.com/abenz1267/muster/internal/coding"
 	"github.com/abenz1267/muster/internal/config"
 	"github.com/abenz1267/muster/internal/git"
 	"github.com/abenz1267/muster/internal/prompt"
@@ -165,6 +166,12 @@ func runOut(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "PR reference: %s\n", prRef)
 	}
 
+	// Create coding tool via factory
+	tool, err := codingToolFactory()
+	if err != nil {
+		return fmt.Errorf("failed to create coding tool: %w", err)
+	}
+
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -184,6 +191,7 @@ func runOut(cmd *cobra.Command, args []string) error {
 		projectCfg:   projectCfg,
 		userCfg:      userCfg,
 		slug:         slug,
+		codingTool:   tool,
 	}); err != nil {
 		return err
 	}
@@ -238,6 +246,7 @@ type monitorCIOpts struct {
 	projectCfg   *config.ProjectConfig
 	userCfg      *config.UserConfig
 	slug         string
+	codingTool   coding.CodingTool
 }
 
 // monitorCI monitors CI status and handles failures.
@@ -257,6 +266,7 @@ func monitorCI(opts monitorCIOpts) error {
 	projectCfg := opts.projectCfg
 	userCfg := opts.userCfg
 	slug := opts.slug
+	codingTool := opts.codingTool
 	if dryRun {
 		_, _ = fmt.Fprintf(w, "[DRY RUN] Would monitor CI status for PR %s\n", prRef)
 		return nil
@@ -296,7 +306,7 @@ func monitorCI(opts monitorCIOpts) error {
 		if attempt > maxCIFixRetries {
 			return fmt.Errorf("CI checks still failing after %d attempts; fix manually and re-run", maxCIFixRetries)
 		}
-		if err := fixCI(w, prRef, vcsClient, resolved, projectCfg, userCfg, slug, attempt); err != nil {
+		if err := fixCI(ctx, w, prRef, vcsClient, resolved, projectCfg, userCfg, slug, attempt, codingTool); err != nil {
 			_, _ = fmt.Fprintf(w, "Warning: CI fix failed: %v\n", err)
 		}
 		// Resume polling after fix attempt
@@ -360,7 +370,7 @@ func monitorCI(opts monitorCIOpts) error {
 				if attempt > maxCIFixRetries {
 					return fmt.Errorf("CI checks still failing after %d attempts; fix manually and re-run", maxCIFixRetries)
 				}
-				if err := fixCI(w, prRef, vcsClient, resolved, projectCfg, userCfg, slug, attempt); err != nil {
+				if err := fixCI(ctx, w, prRef, vcsClient, resolved, projectCfg, userCfg, slug, attempt, codingTool); err != nil {
 					_, _ = fmt.Fprintf(w, "Warning: CI fix failed: %v\n", err)
 				}
 				// Resume polling after fix attempt
@@ -404,7 +414,7 @@ func aggregateChecks(checks []vcs.CheckResult) vcs.CIStatus {
 // fixCI attempts to fix CI failures using AI.
 // It fetches failed logs, renders the fix prompt, and invokes AI to make targeted fixes.
 // Returns error if AI invocation fails (does not halt retry loop).
-func fixCI(w io.Writer, prRef string, vcsClient vcs.VCS, resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, slug string, attempt int) error {
+func fixCI(ctx context.Context, w io.Writer, prRef string, vcsClient vcs.VCS, resolved *config.ResolvedConfig, projectCfg *config.ProjectConfig, userCfg *config.UserConfig, slug string, attempt int, codingTool coding.CodingTool) error {
 	_, _ = fmt.Fprintf(w, "Attempting CI fix (attempt %d of %d)...\n", attempt, maxCIFixRetries)
 
 	// Fetch failed logs
@@ -452,7 +462,7 @@ func fixCI(w io.Writer, prRef string, vcsClient vcs.VCS, resolved *config.Resolv
 
 	// Invoke AI with muster-standard tier model
 	_, _ = fmt.Fprintf(w, "Invoking AI to analyze and fix CI failures...\n")
-	_, err = ai.InvokeAI(ai.InvokeConfig{
+	_, err = codingTool.Invoke(ctx, ai.InvokeConfig{
 		Tool:    config.ToolExecutable(resolved.Tool),
 		Model:   promptCtx.Models.Standard, // Use muster-standard tier
 		Prompt:  promptContent,

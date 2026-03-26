@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/abenz1267/muster/internal/ai"
+	"github.com/abenz1267/muster/internal/coding"
 	"github.com/abenz1267/muster/internal/roadmap"
 	"github.com/abenz1267/muster/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -469,4 +474,132 @@ func TestAddCommand_BatchMode_ContextFromStdin_WhitespaceOnly(t *testing.T) {
 	err = addCmd.RunE(addCmd, []string{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "empty")
+}
+
+func TestAddInteractive_MockAI_Success(t *testing.T) {
+	// This test validates the factory pattern integration in add command.
+	// Note: These tests verify factory replacement pattern but cannot test command
+	// integration (e.g., calling runInteractiveAdd) due to TTY requirement for
+	// interactive mode. The ui.IsInteractive() and term.IsTerminal() checks prevent
+	// non-TTY test runners from entering interactive code paths.
+
+	// Save original factory and restore at end
+	originalFactory := codingToolFactory
+	defer func() { codingToolFactory = originalFactory }()
+
+	var capturedInvoke *ai.InvokeConfig
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForAddTest{
+			response: `{"slug": "test", "title": "Test", "priority": "medium", "status": "planned", "context": "Test"}`,
+			captureFunc: func(cfg *ai.InvokeConfig) {
+				capturedInvoke = cfg
+			},
+		}, nil
+	}
+
+	// Note: We cannot fully test interactive flow without TTY.
+	// The factory pattern is validated - when interactive mode runs,
+	// it will use codingToolFactory() to create the tool.
+	// This test ensures the factory replacement pattern works.
+
+	// Verify factory returns mock
+	tool, err := codingToolFactory()
+	require.NoError(t, err)
+	assert.NotNil(t, tool)
+
+	// Verify mock can be invoked
+	result, err := tool.Invoke(context.Background(), ai.InvokeConfig{
+		Tool:   "test-tool",
+		Model:  "test-model",
+		Prompt: "test prompt",
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Contains(t, result.RawOutput, "test")
+	assert.NotNil(t, capturedInvoke, "invoke config should be captured")
+	assert.Equal(t, "test-tool", capturedInvoke.Tool)
+}
+
+func TestAddInteractive_MockAI_Error(t *testing.T) {
+	// Test that the mock AI tool correctly returns errors
+
+	// Save original factory and restore at end
+	originalFactory := codingToolFactory
+	defer func() { codingToolFactory = originalFactory }()
+
+	// Replace factory with mock that returns error
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForAddTest{
+			returnError: true,
+		}, nil
+	}
+
+	// Verify factory returns mock
+	tool, err := codingToolFactory()
+	require.NoError(t, err)
+	assert.NotNil(t, tool)
+
+	// Verify mock returns error on invoke
+	result, err := tool.Invoke(context.Background(), ai.InvokeConfig{
+		Tool:   "test-tool",
+		Model:  "test-model",
+		Prompt: "test prompt",
+	})
+	require.Error(t, err, "mock should return error")
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "mock AI error")
+}
+
+func TestAddInteractive_MockAI_MalformedJSON(t *testing.T) {
+	// Test that malformed JSON response can be detected
+
+	// Save original factory and restore at end
+	originalFactory := codingToolFactory
+	defer func() { codingToolFactory = originalFactory }()
+
+	// Replace factory with mock that returns non-JSON response
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForAddTest{
+			response: "This is not valid JSON, just plain text",
+		}, nil
+	}
+
+	// Verify factory returns mock
+	tool, err := codingToolFactory()
+	require.NoError(t, err)
+	assert.NotNil(t, tool)
+
+	// Verify mock returns malformed JSON
+	result, err := tool.Invoke(context.Background(), ai.InvokeConfig{
+		Tool:   "test-tool",
+		Model:  "test-model",
+		Prompt: "test prompt",
+	})
+	require.NoError(t, err, "invoke should succeed")
+	assert.NotNil(t, result)
+
+	// Try to parse as roadmap item - should fail
+	var item roadmap.RoadmapItem
+	jsonStr := ai.ExtractJSON(result.RawOutput)
+	err = json.Unmarshal([]byte(jsonStr), &item)
+	require.Error(t, err, "parsing malformed JSON should fail")
+}
+
+// mockCodingToolForAddTest is a mock implementation for add command tests
+type mockCodingToolForAddTest struct {
+	response    string
+	returnError bool
+	captureFunc func(*ai.InvokeConfig)
+}
+
+func (m *mockCodingToolForAddTest) Invoke(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+	if m.captureFunc != nil {
+		m.captureFunc(&cfg)
+	}
+	if m.returnError {
+		return nil, fmt.Errorf("mock AI error")
+	}
+	return &ai.InvokeResult{
+		RawOutput: m.response,
+	}, nil
 }

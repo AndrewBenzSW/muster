@@ -2,10 +2,16 @@ package cmd
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/abenz1267/muster/internal/docker"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -345,4 +351,209 @@ func TestMapKeys_EmptyMap_ReturnsEmptySlice(t *testing.T) {
 	keys := mapKeys(m)
 	assert.Len(t, keys, 0, "should return empty slice for empty map")
 	assert.NotNil(t, keys, "should not return nil")
+}
+
+// Mock Tests
+
+func TestFindOrphanContainers_WithMock_IdentifiesOrphans(t *testing.T) {
+	// Create temp directories for mock responses
+	tmpDir := t.TempDir()
+	callsDir := filepath.Join(tmpDir, "calls")
+	responsesDir := filepath.Join(tmpDir, "responses")
+	require.NoError(t, os.MkdirAll(callsDir, 0755))     //nolint:gosec // G301: Test directory permissions
+	require.NoError(t, os.MkdirAll(responsesDir, 0755)) //nolint:gosec // G301: Test directory permissions
+
+	// Create mock response with 2 containers: one orphan, one in-progress
+	createdTime := time.Now().Add(-2 * time.Hour).Format(time.RFC3339)
+	mockResponse := `{
+		"containers": [
+			{
+				"id": "container1",
+				"name": "muster-myproject-orphan-slug",
+				"project": "myproject",
+				"slug": "orphan-slug",
+				"status": "running",
+				"labels": {
+					"muster.created": "` + createdTime + `"
+				}
+			},
+			{
+				"id": "container2",
+				"name": "muster-myproject-active-slug",
+				"project": "myproject",
+				"slug": "active-slug",
+				"status": "running",
+				"labels": {
+					"muster.created": "` + createdTime + `"
+				}
+			}
+		]
+	}`
+	require.NoError(t, os.WriteFile(filepath.Join(responsesDir, "001-list-containers.json"), []byte(mockResponse), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Create mock runtime
+	mockRuntime := docker.NewMockContainerRuntime(callsDir, responsesDir)
+
+	// Create roadmap with only active-slug as in_progress
+	tmpRoadmapDir := t.TempDir()
+	roadmapContent := `{"items": [{"slug": "active-slug", "status": "in_progress"}]}`
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpRoadmapDir, ".muster"), 0755))                                          //nolint:gosec // G301: Test directory permissions
+	require.NoError(t, os.WriteFile(filepath.Join(tmpRoadmapDir, ".muster", "roadmap.json"), []byte(roadmapContent), 0644)) //nolint:gosec // G306: Test file permissions
+
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+	require.NoError(t, os.Chdir(tmpRoadmapDir))
+
+	// Call findOrphanContainers
+	ctx := context.Background()
+	orphans, err := findOrphanContainers(ctx, mockRuntime, "myproject", false)
+
+	// Verify
+	require.NoError(t, err)
+	assert.Len(t, orphans, 1, "should identify 1 orphan container")
+	if len(orphans) > 0 {
+		assert.Equal(t, "orphan-slug", orphans[0].Slug, "orphan should be orphan-slug")
+	}
+
+	// Verify mock was called
+	callFile := filepath.Join(callsDir, "001-list-containers.json")
+	assert.FileExists(t, callFile, "mock should record ListContainers call")
+}
+
+func TestDownCommand_WithMock_VerifiesComposeDownCall(t *testing.T) {
+	// Save original factory
+	original := containerRuntimeFactory
+	defer func() { containerRuntimeFactory = original }()
+
+	// Create temp directories for mock
+	tmpDir := t.TempDir()
+	callsDir := filepath.Join(tmpDir, "calls")
+	responsesDir := filepath.Join(tmpDir, "responses")
+	require.NoError(t, os.MkdirAll(callsDir, 0755))     //nolint:gosec // G301: Test directory permissions
+	require.NoError(t, os.MkdirAll(responsesDir, 0755)) //nolint:gosec // G301: Test directory permissions
+
+	// Create mock responses
+	pingResponse := `{}`
+	require.NoError(t, os.WriteFile(filepath.Join(responsesDir, "001-ping.json"), []byte(pingResponse), 0644)) //nolint:gosec // G306: Test file permissions
+
+	createdTime := time.Now().Add(-2 * time.Hour).Format(time.RFC3339)
+	listResponse := `{
+		"containers": [
+			{
+				"id": "container1",
+				"name": "muster-testproject-test-slug",
+				"project": "testproject",
+				"slug": "test-slug",
+				"status": "running",
+				"labels": {
+					"muster.created": "` + createdTime + `"
+				}
+			}
+		]
+	}`
+	require.NoError(t, os.WriteFile(filepath.Join(responsesDir, "001-list-containers.json"), []byte(listResponse), 0644)) //nolint:gosec // G306: Test file permissions
+
+	composeDownResponse := `{}`
+	require.NoError(t, os.WriteFile(filepath.Join(responsesDir, "001-compose-down.json"), []byte(composeDownResponse), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Replace factory with mock
+	mockRuntime := docker.NewMockContainerRuntime(callsDir, responsesDir)
+	containerRuntimeFactory = func() (docker.ContainerRuntime, error) {
+		return mockRuntime, nil
+	}
+
+	// Create compose file in expected location
+	homeDir, err := os.UserHomeDir()
+	require.NoError(t, err)
+	composePath := filepath.Join(homeDir, ".cache", "muster", "compose", "testproject", "docker-compose.yml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(composePath), 0755))                                                       //nolint:gosec // G301: Test directory permissions
+	require.NoError(t, os.WriteFile(composePath, []byte("version: '3.8'\nservices:\n  test:\n    image: alpine\n"), 0644)) //nolint:gosec // G306: Test file permissions
+	defer os.RemoveAll(filepath.Join(homeDir, ".cache", "muster"))                                                         //nolint:errcheck // G104: Cleanup is best-effort
+
+	// Create command
+	cmd := &cobra.Command{
+		Use:  "down",
+		RunE: downCmd.RunE,
+	}
+	cmd.Flags().Bool("all", true, "")
+	cmd.Flags().Bool("orphans", false, "")
+	cmd.Flags().String("project", "testproject", "")
+	cmd.Flags().Bool("verbose", false, "")
+
+	// Execute
+	err = cmd.RunE(cmd, []string{})
+	require.NoError(t, err)
+
+	// Verify ComposeDown was called
+	composeDownCall := filepath.Join(callsDir, "001-compose-down.json")
+	assert.FileExists(t, composeDownCall, "ComposeDown should have been called")
+
+	// Verify call details
+	if _, err := os.Stat(composeDownCall); err == nil {
+		data, err := os.ReadFile(composeDownCall) //nolint:gosec // G304: Reading test fixture
+		require.NoError(t, err)
+		var call map[string]interface{}
+		require.NoError(t, json.Unmarshal(data, &call))
+		assert.Equal(t, "ComposeDown", call["method"])
+		assert.Equal(t, "testproject", call["projectName"])
+	}
+}
+
+func TestDownCommand_WithMock_NoContainers_OutputsMessage(t *testing.T) {
+	// Save original factory
+	original := containerRuntimeFactory
+	defer func() { containerRuntimeFactory = original }()
+
+	// Create temp directories for mock
+	tmpDir := t.TempDir()
+	callsDir := filepath.Join(tmpDir, "calls")
+	responsesDir := filepath.Join(tmpDir, "responses")
+	require.NoError(t, os.MkdirAll(callsDir, 0755))     //nolint:gosec // G301: Test directory permissions
+	require.NoError(t, os.MkdirAll(responsesDir, 0755)) //nolint:gosec // G301: Test directory permissions
+
+	// Create mock responses
+	pingResponse := `{}`
+	require.NoError(t, os.WriteFile(filepath.Join(responsesDir, "001-ping.json"), []byte(pingResponse), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Empty containers list
+	listResponse := `{"containers": []}`
+	require.NoError(t, os.WriteFile(filepath.Join(responsesDir, "001-list-containers.json"), []byte(listResponse), 0644)) //nolint:gosec // G306: Test file permissions
+
+	// Replace factory with mock
+	mockRuntime := docker.NewMockContainerRuntime(callsDir, responsesDir)
+	containerRuntimeFactory = func() (docker.ContainerRuntime, error) {
+		return mockRuntime, nil
+	}
+
+	// Capture stderr
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
+
+	// Create command
+	cmd := &cobra.Command{
+		Use:  "down",
+		RunE: downCmd.RunE,
+	}
+	cmd.Flags().Bool("all", true, "")
+	cmd.Flags().Bool("orphans", false, "")
+	cmd.Flags().String("project", "testproject", "")
+	cmd.Flags().Bool("verbose", false, "")
+
+	// Execute
+	err = cmd.RunE(cmd, []string{})
+	require.NoError(t, err)
+
+	// Close writer and read output
+	_ = w.Close()
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	// Verify output
+	assert.Contains(t, output, "No containers to stop", "should output no containers message")
 }

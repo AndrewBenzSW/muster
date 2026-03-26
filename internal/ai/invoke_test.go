@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -211,7 +212,7 @@ func TestInvokeAI_Success(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -233,7 +234,7 @@ func TestInvokeAI_ToolNotFound(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.Error(t, err)
 	require.Nil(t, result)
 
@@ -252,7 +253,7 @@ func TestInvokeAI_NonZeroExit(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.Error(t, err)
 	require.Nil(t, result)
 
@@ -271,7 +272,7 @@ func TestInvokeAI_EmptyOutput(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -286,7 +287,7 @@ func TestInvokeAI_EmptyTool(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "tool cannot be empty")
@@ -302,7 +303,7 @@ func TestInvokeAI_EmptyPrompt(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "prompt cannot be empty")
@@ -319,7 +320,7 @@ func TestInvokeAI_ModelPassthrough(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -340,7 +341,7 @@ func TestInvokeAI_NoModel(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -367,7 +368,7 @@ func TestInvokeAI_Verbose(t *testing.T) {
 		Verbose: true,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 
 	// Restore stderr
 	_ = w.Close()
@@ -398,7 +399,7 @@ func TestInvokeAI_SkillFileCreated(t *testing.T) {
 		Verbose: false,
 	}
 
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -423,7 +424,7 @@ func TestInvokeAI_Timeout(t *testing.T) {
 	}
 
 	// This should succeed after the delay
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -447,7 +448,7 @@ func TestInvokeAI_TimeoutActual(t *testing.T) {
 
 	// Measure time to ensure timeout is working
 	start := time.Now()
-	result, err := InvokeAI(cfg)
+	result, err := InvokeAI(context.Background(), cfg)
 	elapsed := time.Since(start)
 
 	// Should fail with an error
@@ -482,7 +483,7 @@ func TestInvokeAI_Concurrent(t *testing.T) {
 				Verbose: false,
 			}
 
-			result, err := InvokeAI(cfg)
+			result, err := InvokeAI(context.Background(), cfg)
 			if err != nil {
 				errChan <- fmt.Errorf("goroutine %d failed: %w", id, err)
 				return
@@ -560,4 +561,118 @@ func TestExtractJSON(t *testing.T) {
 			assert.Equal(t, tt.expected, ExtractJSON(tt.input))
 		})
 	}
+}
+
+func TestInvokeAI_ContextDeadlineRespected(t *testing.T) {
+	// Create a mock tool that delays for 500ms
+	mock := newMockAITool(t, `{"success": true}`).WithDelay(500 * time.Millisecond)
+	mock.setupEnv(t)
+
+	// Create context with 100ms deadline
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	cfg := InvokeConfig{
+		Tool:    mock.Path(),
+		Prompt:  "Test prompt",
+		Verbose: false,
+	}
+
+	// Measure elapsed time
+	start := time.Now()
+	result, err := InvokeAI(ctx, cfg)
+	elapsed := time.Since(start)
+
+	// Should fail with timeout error
+	require.Error(t, err)
+	require.Nil(t, result)
+
+	// Should timeout at ~100ms, not wait for full 500ms delay
+	assert.Less(t, elapsed, 200*time.Millisecond, "should timeout at ~100ms, not wait for full 500ms delay")
+	assert.Greater(t, elapsed, 80*time.Millisecond, "should take at least the deadline duration")
+}
+
+func TestInvokeAI_ContextDeadlinePrecedence(t *testing.T) {
+	// This test verifies the deadline comparison logic in invoke.go (lines 93-109).
+	// It tests all branches of the deadline precedence logic.
+
+	t.Run("ContextDeadlineShorterThanConfigTimeout", func(t *testing.T) {
+		// Context deadline: 100ms
+		// Config timeout: 200ms
+		// Expected: Context deadline wins (100ms)
+
+		mock := newMockAITool(t, `{"success": true}`).WithDelay(500 * time.Millisecond)
+		mock.setupEnv(t)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		cfg := InvokeConfig{
+			Tool:    mock.Path(),
+			Prompt:  "Test prompt",
+			Timeout: 200 * time.Millisecond,
+		}
+
+		start := time.Now()
+		_, err := InvokeAI(ctx, cfg)
+		elapsed := time.Since(start)
+
+		require.Error(t, err)
+		// Should use context deadline (100ms), not config timeout (200ms)
+		assert.Less(t, elapsed, 150*time.Millisecond, "should use shorter context deadline")
+		assert.Greater(t, elapsed, 80*time.Millisecond, "should wait at least context deadline")
+	})
+
+	t.Run("ConfigTimeoutShorterThanContextDeadline", func(t *testing.T) {
+		// Context deadline: 200ms
+		// Config timeout: 100ms
+		// Expected: Config timeout wins (100ms)
+
+		mock := newMockAITool(t, `{"success": true}`).WithDelay(500 * time.Millisecond)
+		mock.setupEnv(t)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+
+		cfg := InvokeConfig{
+			Tool:    mock.Path(),
+			Prompt:  "Test prompt",
+			Timeout: 100 * time.Millisecond,
+		}
+
+		start := time.Now()
+		_, err := InvokeAI(ctx, cfg)
+		elapsed := time.Since(start)
+
+		require.Error(t, err)
+		// Should use shorter config timeout (100ms), not context deadline (200ms)
+		assert.Less(t, elapsed, 150*time.Millisecond, "should use shorter config timeout")
+		assert.Greater(t, elapsed, 80*time.Millisecond, "should wait at least config timeout")
+	})
+
+	t.Run("NoExistingContextDeadline", func(t *testing.T) {
+		// Context: No deadline
+		// Config timeout: 100ms
+		// Expected: Config timeout is used (100ms)
+
+		mock := newMockAITool(t, `{"success": true}`).WithDelay(500 * time.Millisecond)
+		mock.setupEnv(t)
+
+		ctx := context.Background() // No deadline
+
+		cfg := InvokeConfig{
+			Tool:    mock.Path(),
+			Prompt:  "Test prompt",
+			Timeout: 100 * time.Millisecond,
+		}
+
+		start := time.Now()
+		_, err := InvokeAI(ctx, cfg)
+		elapsed := time.Since(start)
+
+		require.Error(t, err)
+		// Should use config timeout (100ms) since context has no deadline
+		assert.Less(t, elapsed, 150*time.Millisecond, "should use config timeout")
+		assert.Greater(t, elapsed, 80*time.Millisecond, "should wait at least config timeout")
+	})
 }

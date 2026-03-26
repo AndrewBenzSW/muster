@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-26
+
+### Added
+
+- **CodingTool Interface**: `internal/coding/` package with `CodingTool` interface for single-shot AI invocations (`Invoke(ctx, InvokeConfig) (*InvokeResult, error)`) and `InteractiveCodingTool` interface for foreground sessions (`RunInteractive(ctx, InteractiveConfig) error`), enabling testable abstraction over AI coding tools
+- **ClaudeCodeTool Implementation**: Concrete implementation wrapping existing `ai.InvokeAI` for single-shot mode and `exec.Command` for interactive mode, extracting Claude Code-specific logic from command layer
+- **MockCodingTool for Testing**: File-based mock writing invocations to `.muster/mockcode/calls/NNN-invoke.json` and reading responses from `.muster/mockcode/responses/NNN-invoke.json`, enabling deterministic testing without Claude Code binary or API keys
+- **MockInteractiveCodingTool**: File-based mock for interactive mode recording launch parameters to `.muster/mockcode/calls/NNN-interactive.json` for test verification
+- **ContainerRuntime Interface**: `internal/docker/` interface with `ComposeUp`, `ComposeDown`, `ComposeExec`, `ListContainers`, `Ping`, and `Close` methods that existing `*Client` satisfies implicitly through structural typing
+- **MockContainerRuntime**: File-based mock writing operations to `.muster/mockdocker/calls/NNN-{up|down|exec|list}.json` and reading container listings from `.muster/mockdocker/responses/NNN-list.json`, enabling Docker-less testing
+- **Factory Pattern for Dependency Injection**: `cmd/factories.go` with three package-level factory variables (`codingToolFactory`, `interactiveCodingToolFactory`, `containerRuntimeFactory`) replaceable by tests for mock injection
+- **Mock Error Types**: `MockInfraError` for test infrastructure failures (missing response files) and `SimulatedToolError` for intentional error simulation (error field in response fixtures), distinguishable via `errors.As()`
+- **Command-Level Mock Injection Tests**: Each migrated command includes tests replacing factory variables with mock constructors, verifying correct configuration passed to tools without external dependencies
+
+### Changed
+
+- **`muster add` Command**: Migrated to use `CodingTool` interface via factory pattern, enabling mock-based testing for slug generation, priority suggestion, and context expansion without real AI invocations
+- **`muster sync` Command**: Migrated to use `CodingTool` interface for fuzzy matching logic, with comprehensive mock-injection tests for confidence thresholds and multi-match scenarios
+- **`muster down` Command**: Migrated to use `ContainerRuntime` interface for container cleanup, enabling testing without Docker daemon
+- **`muster plan` Command**: Migrated to use `InteractiveCodingTool` interface for launching planning sessions
+- **`muster code` Command**: Migrated to use both `InteractiveCodingTool` (always) and `ContainerRuntime` (when `--yolo` flag set) via conditional factory invocation
+- **`muster out` Command**: Migrated to use `CodingTool` interface for CI fix attempts with retry logic, maintaining complex `monitorCIOpts` threading pattern
+
+### Fixed
+
+- **Context Threading for ContainerRuntime**: All `*Client` methods already respect `context.Context` for timeouts and cancellation, validated through code inspection and integration tests
+
 ## [0.6.0] - 2026-03-23
 
 ### Added

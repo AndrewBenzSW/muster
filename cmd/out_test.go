@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +11,8 @@ import (
 	"time"
 
 	"github.com/abenz1267/muster/internal/ai"
+	"github.com/abenz1267/muster/internal/coding"
+	"github.com/abenz1267/muster/internal/config"
 	"github.com/abenz1267/muster/internal/vcs"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -541,12 +545,6 @@ func TestOutCommand_DryRun_NoSideEffects(t *testing.T) {
 
 // Cleanup Tests
 
-func TestOutCommand_Cleanup_CollectsAllErrors(t *testing.T) {
-	// Note: Full cleanup testing requires mocking git operations.
-	// This is a structural test to verify the cleanup function exists and handles errors.
-	t.Skip("Cleanup function tested indirectly through integration tests")
-}
-
 func TestOutCommand_Cleanup_MarksItemCompletedEvenOnPartialFailure(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -662,14 +660,18 @@ func TestOutCommand_CIFailure_TriggersAIInvocation(t *testing.T) {
 		}, nil
 	}
 
-	// Mock AI invocation
-	originalInvokeAI := ai.InvokeAI
-	defer func() { ai.InvokeAI = originalInvokeAI }()
+	// Mock coding tool factory
+	originalCodingFactory := codingToolFactory
+	defer func() { codingToolFactory = originalCodingFactory }()
 
 	invokeCount := 0
-	ai.InvokeAI = func(cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
-		invokeCount++
-		return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForOut{
+			invoke: func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+				invokeCount++
+				return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+			},
+		}, nil
 	}
 
 	// Execute command with dry-run=false and wait=false (so it exits after first check)
@@ -722,14 +724,18 @@ func TestOutCommand_CIFailure_NoFixFlag_SkipsAI(t *testing.T) {
 		}, nil
 	}
 
-	// Mock AI invocation
-	originalInvokeAI := ai.InvokeAI
-	defer func() { ai.InvokeAI = originalInvokeAI }()
+	// Mock coding tool factory
+	originalCodingFactory := codingToolFactory
+	defer func() { codingToolFactory = originalCodingFactory }()
 
 	invokeCount := 0
-	ai.InvokeAI = func(cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
-		invokeCount++
-		return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForOut{
+			invoke: func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+				invokeCount++
+				return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+			},
+		}, nil
 	}
 
 	// Execute command with --no-fix
@@ -786,14 +792,18 @@ func TestOutCommand_CIFailure_MaxRetriesRespected(t *testing.T) {
 		}, nil
 	}
 
-	// Mock AI invocation
-	originalInvokeAI := ai.InvokeAI
-	defer func() { ai.InvokeAI = originalInvokeAI }()
+	// Mock coding tool factory
+	originalCodingFactory := codingToolFactory
+	defer func() { codingToolFactory = originalCodingFactory }()
 
 	invokeCount := 0
-	ai.InvokeAI = func(cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
-		invokeCount++
-		return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForOut{
+			invoke: func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+				invokeCount++
+				return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+			},
+		}, nil
 	}
 
 	// Execute command with --wait to trigger polling loop
@@ -872,14 +882,18 @@ func TestOutCommand_CIFailure_SuccessAfterRetry(t *testing.T) {
 		}, nil
 	}
 
-	// Mock AI invocation
-	originalInvokeAI := ai.InvokeAI
-	defer func() { ai.InvokeAI = originalInvokeAI }()
+	// Mock coding tool factory
+	originalCodingFactory := codingToolFactory
+	defer func() { codingToolFactory = originalCodingFactory }()
 
 	invokeCount := 0
-	ai.InvokeAI = func(cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
-		invokeCount++
-		return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForOut{
+			invoke: func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+				invokeCount++
+				return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+			},
+		}, nil
 	}
 
 	// Execute command with --wait to trigger polling
@@ -1028,14 +1042,18 @@ func TestOutCommand_FullLifecycle_Integration(t *testing.T) {
 		}, nil
 	}
 
-	// Mock AI invocation (shouldn't be called since CI is passing)
-	originalInvokeAI := ai.InvokeAI
-	defer func() { ai.InvokeAI = originalInvokeAI }()
+	// Mock coding tool factory (shouldn't be called since CI is passing)
+	originalCodingFactory := codingToolFactory
+	defer func() { codingToolFactory = originalCodingFactory }()
 
 	aiInvokeCount := 0
-	ai.InvokeAI = func(cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
-		aiInvokeCount++
-		return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForOut{
+			invoke: func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+				aiInvokeCount++
+				return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+			},
+		}, nil
 	}
 
 	// Execute command (not dry-run, so it actually updates the roadmap)
@@ -1168,16 +1186,20 @@ func TestOutCommand_FixCI_NoLogs_UsesGenericPrompt(t *testing.T) {
 		}, nil
 	}
 
-	// Mock AI invocation to verify prompt content
-	originalInvokeAI := ai.InvokeAI
-	defer func() { ai.InvokeAI = originalInvokeAI }()
+	// Mock coding tool factory to verify prompt content
+	originalCodingFactory := codingToolFactory
+	defer func() { codingToolFactory = originalCodingFactory }()
 
 	invokeCount := 0
 	var capturedPrompt string
-	ai.InvokeAI = func(cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
-		invokeCount++
-		capturedPrompt = cfg.Prompt
-		return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+	codingToolFactory = func() (coding.CodingTool, error) {
+		return &mockCodingToolForOut{
+			invoke: func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+				invokeCount++
+				capturedPrompt = cfg.Prompt
+				return &ai.InvokeResult{RawOutput: "Fixed"}, nil
+			},
+		}, nil
 	}
 
 	// Execute command with --wait=false to exit after first check
@@ -1193,4 +1215,119 @@ func TestOutCommand_FixCI_NoLogs_UsesGenericPrompt(t *testing.T) {
 	// Verify AI was invoked with generic prompt
 	assert.GreaterOrEqual(t, invokeCount, 1, "AI should be invoked")
 	assert.Contains(t, capturedPrompt, "CI checks failed, please investigate", "prompt should contain generic message when logs are empty")
+}
+
+// Mock Tests for fixCI with CodingTool
+
+func TestFixCI_MockCodingTool_InvocationRecorded(t *testing.T) {
+	// Test that fixCI invokes codingTool.Invoke with correct prompt containing CI failure logs
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Create minimal valid config
+	musterDir := filepath.Join(tmpDir, ".muster")
+	require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory
+	configContent := "defaults:\n  tool: test-tool\n  provider: mock\n  model: test-model\n"
+	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(configContent), 0644)) //nolint:gosec // G306: Test file
+
+	// Load config
+	userCfg, err := config.LoadUserConfig("")
+	require.NoError(t, err)
+	projectCfg, err := config.LoadProjectConfig(".")
+	require.NoError(t, err)
+	resolved, err := config.ResolveStep("out", projectCfg, userCfg)
+	require.NoError(t, err)
+
+	// Create mock VCS with failed logs
+	mockVCSInstance := &mockVCS{
+		failedLogs: []vcs.FailedCheckLog{
+			{CheckName: "lint", Logs: "Error: unused variable 'foo'"},
+			{CheckName: "test", Logs: "FAIL: TestFoo failed"},
+		},
+	}
+
+	// Track codingTool.Invoke calls
+	var capturedCtx context.Context
+	var capturedCfg *ai.InvokeConfig
+	mockTool := &mockCodingToolForOut{
+		invoke: func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+			capturedCtx = ctx
+			capturedCfg = &cfg
+			return &ai.InvokeResult{RawOutput: "Fixed the issues"}, nil
+		},
+	}
+
+	// Call fixCI
+	ctx := context.Background()
+	buf := new(bytes.Buffer)
+	err = fixCI(ctx, buf, "test-pr", mockVCSInstance, resolved, projectCfg, userCfg, "test-slug", 1, mockTool)
+	assert.NoError(t, err, "fixCI should succeed with mock")
+
+	// Verify Invoke was called with correct config
+	require.NotNil(t, capturedCtx, "context should be passed to Invoke")
+	require.NotNil(t, capturedCfg, "config should be passed to Invoke")
+	assert.Equal(t, "test-tool", capturedCfg.Tool, "tool should be from resolved config")
+	assert.Contains(t, capturedCfg.Prompt, "lint", "prompt should contain failed check name")
+	assert.Contains(t, capturedCfg.Prompt, "unused variable 'foo'", "prompt should contain CI failure logs")
+	assert.Contains(t, capturedCfg.Prompt, "TestFoo failed", "prompt should contain test failure logs")
+}
+
+func TestFixCI_MockCodingTool_AIFailure(t *testing.T) {
+	// Test that fixCI returns error when AI invocation fails
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Create minimal valid config
+	musterDir := filepath.Join(tmpDir, ".muster")
+	require.NoError(t, os.MkdirAll(musterDir, 0755)) //nolint:gosec // G301: Test directory
+	configContent := "defaults:\n  tool: test-tool\n  provider: mock\n  model: test-model\n"
+	require.NoError(t, os.WriteFile(filepath.Join(musterDir, "config.yml"), []byte(configContent), 0644)) //nolint:gosec // G306: Test file
+
+	// Load config
+	userCfg, err := config.LoadUserConfig("")
+	require.NoError(t, err)
+	projectCfg, err := config.LoadProjectConfig(".")
+	require.NoError(t, err)
+	resolved, err := config.ResolveStep("out", projectCfg, userCfg)
+	require.NoError(t, err)
+
+	// Create mock VCS with failed logs
+	mockVCSInstance := &mockVCS{
+		failedLogs: []vcs.FailedCheckLog{
+			{CheckName: "test", Logs: "FAIL: TestBar failed"},
+		},
+	}
+
+	// Mock coding tool that returns error
+	mockCodingToolForOut := &mockCodingToolForOut{
+		invoke: func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+			return nil, fmt.Errorf("AI service unavailable")
+		},
+	}
+
+	// Call fixCI
+	ctx := context.Background()
+	buf := new(bytes.Buffer)
+	err = fixCI(ctx, buf, "test-pr", mockVCSInstance, resolved, projectCfg, userCfg, "test-slug", 2, mockCodingToolForOut)
+	require.Error(t, err, "fixCI should return error when AI fails")
+	assert.Contains(t, err.Error(), "AI service unavailable", "error should contain AI failure message")
+
+	// Verify warning was logged
+	output := buf.String()
+	assert.Contains(t, output, "Warning: AI fix attempt failed", "output should contain warning about AI failure")
+}
+
+// mockCodingToolForOut is a mock implementation of coding.CodingTool for testing.
+type mockCodingToolForOut struct {
+	invoke func(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error)
+}
+
+func (m *mockCodingToolForOut) Invoke(ctx context.Context, cfg ai.InvokeConfig) (*ai.InvokeResult, error) {
+	return m.invoke(ctx, cfg)
 }

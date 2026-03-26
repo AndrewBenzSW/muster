@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -175,7 +176,7 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 	}
 
 	// Create prompt context
-	ctx := prompt.NewPromptContext(
+	promptCtx := prompt.NewPromptContext(
 		resolved,
 		projectCfg,
 		userCfg,
@@ -185,10 +186,10 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 		".",  // mainRepoPath
 		"",   // planDir
 	)
-	ctx.Extra["UserInput"] = userInput
+	promptCtx.Extra["UserInput"] = userInput
 
 	// Render template
-	promptContent, err := prompt.RenderTemplate("prompts/add-item/add-item-prompt.md.tmpl", ctx)
+	promptContent, err := prompt.RenderTemplate("prompts/add-item/add-item-prompt.md.tmpl", promptCtx)
 	if err != nil {
 		return fmt.Errorf("failed to render template: %w", err)
 	}
@@ -198,9 +199,21 @@ func runInteractiveAdd(cmd *cobra.Command, rm *roadmap.Roadmap, resolved *config
 		fmt.Fprintf(os.Stderr, "Invocation command: %s --print --plugin-dir <tmpdir>\n", config.ToolExecutable(resolved.Tool))
 	}
 
+	// Create coding tool via factory
+	tool, err := codingToolFactory()
+	if err != nil {
+		return fmt.Errorf("failed to create coding tool: %w", err)
+	}
+
+	// Get context from command
+	invokeCtx := cmd.Context()
+	if invokeCtx == nil {
+		invokeCtx = context.Background()
+	}
+
 	// Invoke AI
 	fmt.Fprintf(os.Stderr, "Generating roadmap item with AI...\n")
-	result, err := ai.InvokeAI(ai.InvokeConfig{
+	result, err := tool.Invoke(invokeCtx, ai.InvokeConfig{
 		Tool:    config.ToolExecutable(resolved.Tool),
 		Model:   resolved.Model,
 		Prompt:  promptContent,
